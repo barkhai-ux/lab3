@@ -1,3 +1,6 @@
+import logging
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +27,8 @@ from app.workers.tasks import (
     download_and_parse_replay,
     fetch_matches_for_user,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -84,8 +89,20 @@ async def refresh_matches(
     current_user: User = Depends(get_current_user),
 ):
     """Trigger a background job to fetch the user's recent matches from Steam."""
-    task = fetch_matches_for_user.delay(current_user.steam_id)
-    return TaskStatusOut(task_id=task.id, status="queued")
+    try:
+        task = fetch_matches_for_user.delay(current_user.steam_id)
+        return TaskStatusOut(task_id=task.id, status="queued")
+    except Exception:
+        # Celery/Redis unavailable — run inline
+        logger.warning("Celery unavailable, running match fetch inline")
+        from app.workers.ingestion import fetch_and_store_matches
+
+        match_ids = await fetch_and_store_matches(current_user.steam_id)
+        return TaskStatusOut(
+            task_id=uuid.uuid4().hex,
+            status="completed",
+            result={"new_matches": len(match_ids), "match_ids": match_ids},
+        )
 
 
 @router.get("/{match_id}", response_model=MatchDetailOut)
@@ -206,11 +223,28 @@ async def trigger_analysis(
     if match is None:
         raise HTTPException(status_code=404, detail="Match not found")
 
-    # Chain: download/parse → analyze
-    chain = (
-        download_and_parse_replay.si(match_id)
-        | analyze_match_for_user.si(match_id, current_user.steam_id)
-    )
-    task = chain.apply_async()
+    try:
+        # Chain: download/parse → analyze
+        chain = (
+            download_and_parse_replay.si(match_id)
+            | analyze_match_for_user.si(match_id, current_user.steam_id)
+        )
+        task = chain.apply_async()
+        return TaskStatusOut(task_id=task.id, status="queued")
+    except Exception:
+        # Celery/Redis unavailable — run analysis inline (skip replay download)
+        logger.warning("Celery unavailable, running analysis inline")
+        from app.workers.analysis import run_analysis
 
-    return TaskStatusOut(task_id=task.id, status="queued")
+        try:
+            result = run_analysis(match_id, current_user.steam_id)
+            return TaskStatusOut(
+                task_id=uuid.uuid4().hex,
+                status="completed",
+                result=result,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Analysis failed: {exc}",
+            )

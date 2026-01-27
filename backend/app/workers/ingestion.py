@@ -28,10 +28,14 @@ KNOWN_PATCHES = [
 ]
 
 
-async def ensure_patches_exist(session: AsyncSession) -> dict[str, int]:
-    """Ensure all known patches exist in the DB. Returns name→id mapping."""
+async def ensure_patches_exist(
+    session: AsyncSession,
+) -> dict[str, tuple[int, datetime]]:
+    """Ensure all known patches exist in the DB. Returns name → (id, released_at) mapping."""
     result = await session.execute(select(Patch))
-    existing = {p.name: p.id for p in result.scalars().all()}
+    existing: dict[str, tuple[int, datetime]] = {
+        p.name: (p.id, p.released_at) for p in result.scalars().all()
+    }
 
     for name, released_str in KNOWN_PATCHES:
         if name not in existing:
@@ -39,24 +43,26 @@ async def ensure_patches_exist(session: AsyncSession) -> dict[str, int]:
             patch = Patch(name=name, released_at=released_at)
             session.add(patch)
             await session.flush()
-            existing[name] = patch.id
+            existing[name] = (patch.id, released_at)
 
     return existing
 
 
 def determine_patch(
-    match_start: datetime, patches: dict[str, int]
+    match_start: datetime, patches: dict[str, tuple[int, datetime]]
 ) -> int | None:
-    """Determine which patch a match was played on based on its start time."""
+    """Determine which patch a match was played on based on its start time.
+
+    Finds the latest patch whose released_at is on or before match_start.
+    """
     sorted_patches = sorted(
-        [(name, pid) for name, pid in patches.items()],
-        key=lambda x: x[0],
+        patches.values(),
+        key=lambda x: x[1],  # sort by released_at
         reverse=True,
     )
-    # Find the latest patch that was released before the match started.
-    # This is a simplification; proper logic would use the released_at timestamps.
-    for name, pid in sorted_patches:
-        return pid
+    for pid, released_at in sorted_patches:
+        if released_at <= match_start:
+            return pid
     return None
 
 
