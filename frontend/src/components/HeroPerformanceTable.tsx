@@ -1,4 +1,5 @@
 import type { HeroPerformance } from '../types';
+import { getHeroName, getHeroIcon } from '../data/heroes';
 
 interface Props {
   heroes: HeroPerformance[];
@@ -38,8 +39,19 @@ export default function HeroPerformanceTable({ heroes }: Props) {
                 key={h.hero_id}
                 className="border-b border-gray-800 hover:bg-dota-surface/50"
               >
-                <td className="py-2 pr-4 font-mono text-gray-300">
-                  Hero {h.hero_id}
+                <td className="py-2 pr-4">
+                  <div className="flex items-center gap-2">
+                    {getHeroIcon(h.hero_id) ? (
+                      <img
+                        src={getHeroIcon(h.hero_id)}
+                        alt={getHeroName(h.hero_id)}
+                        className="w-8 h-[22px] object-cover rounded-sm"
+                      />
+                    ) : null}
+                    <span className="text-gray-300">
+                      {getHeroName(h.hero_id)}
+                    </span>
+                  </div>
                 </td>
                 <td className="text-center px-2">{h.matches_played}</td>
                 <td className="text-center px-2 text-green-400">{h.wins}</td>

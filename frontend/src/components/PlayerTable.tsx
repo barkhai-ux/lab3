@@ -1,4 +1,5 @@
 import type { MatchPlayerOut } from '../types';
+import { getHeroName, getHeroIcon } from '../data/heroes';
 
 interface Props {
   players: MatchPlayerOut[];
@@ -66,13 +67,24 @@ function TeamTable({
                   key={p.player_slot}
                   className={`border-b border-gray-800 ${isMe ? 'bg-dota-accent/30' : ''}`}
                 >
-                  <td className="py-2 pr-4 font-mono text-gray-300">
-                    Hero {p.hero_id}
-                    {p.role && (
-                      <span className="ml-1 text-xs text-gray-500">
-                        (P{p.role})
+                  <td className="py-2 pr-4">
+                    <div className="flex items-center gap-2">
+                      {getHeroIcon(p.hero_id) ? (
+                        <img
+                          src={getHeroIcon(p.hero_id)}
+                          alt={getHeroName(p.hero_id)}
+                          className="w-8 h-[22px] object-cover rounded-sm"
+                        />
+                      ) : null}
+                      <span className="text-gray-300">
+                        {getHeroName(p.hero_id)}
                       </span>
-                    )}
+                      {p.role && (
+                        <span className="text-xs text-gray-500">
+                          (P{p.role})
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="text-center px-2 text-green-400">{p.kills ?? '-'}</td>
                   <td className="text-center px-2 text-red-400">{p.deaths ?? '-'}</td>

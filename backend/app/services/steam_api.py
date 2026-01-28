@@ -37,6 +37,11 @@ class SteamAPIClient:
 
     def __init__(self):
         self.api_key = settings.steam_api_key
+        if not self.api_key or self.api_key == "your_steam_api_key_here":
+            raise SteamAPIError(
+                "STEAM_API_KEY is not configured. Get one at "
+                "https://steamcommunity.com/dev/apikey and set it in backend/.env"
+            )
 
     async def get_match_history(
         self,
@@ -72,7 +77,11 @@ class SteamAPIClient:
         result = data.get("result", {})
 
         if result.get("status") == 15:
-            raise SteamAPIError("Profile is private", status_code=403)
+            raise SteamAPIError(
+                "Match history is private. Enable 'Expose Public Match Data' "
+                "in Dota 2: Settings → Options → Advanced Options.",
+                status_code=403,
+            )
 
         return result
 

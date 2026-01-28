@@ -25,7 +25,6 @@ from app.schemas.match import (
 from app.workers.tasks import (
     analyze_match_for_user,
     download_and_parse_replay,
-    fetch_matches_for_user,
 )
 
 logger = logging.getLogger(__name__)
@@ -88,21 +87,28 @@ async def list_matches(
 async def refresh_matches(
     current_user: User = Depends(get_current_user),
 ):
-    """Trigger a background job to fetch the user's recent matches from Steam."""
-    try:
-        task = fetch_matches_for_user.delay(current_user.steam_id)
-        return TaskStatusOut(task_id=task.id, status="queued")
-    except Exception:
-        # Celery/Redis unavailable — run inline
-        logger.warning("Celery unavailable, running match fetch inline")
-        from app.workers.ingestion import fetch_and_store_matches
+    """Fetch the user's recent matches from Steam."""
+    from app.services.steam_api import SteamAPIError
+    from app.workers.ingestion import fetch_and_store_matches
 
+    try:
         match_ids = await fetch_and_store_matches(current_user.steam_id)
-        return TaskStatusOut(
-            task_id=uuid.uuid4().hex,
-            status="completed",
-            result={"new_matches": len(match_ids), "match_ids": match_ids},
+    except SteamAPIError as exc:
+        raise HTTPException(
+            status_code=exc.status_code or 502,
+            detail=str(exc),
         )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to fetch matches from Steam: {exc}",
+        )
+
+    return TaskStatusOut(
+        task_id=uuid.uuid4().hex,
+        status="completed",
+        result={"new_matches": len(match_ids), "match_ids": match_ids},
+    )
 
 
 @router.get("/{match_id}", response_model=MatchDetailOut)

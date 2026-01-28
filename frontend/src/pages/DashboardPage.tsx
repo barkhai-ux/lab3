@@ -33,15 +33,13 @@ export default function DashboardPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    setError(null);
     try {
       await refreshMatches();
-      // Wait a moment for the background task to start processing, then reload
-      setTimeout(() => {
-        fetchPage(1);
-        setRefreshing(false);
-      }, 2000);
+      await fetchPage(1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to refresh');
+      setError(err instanceof Error ? err.message : 'Failed to refresh matches');
+    } finally {
       setRefreshing(false);
     }
   };

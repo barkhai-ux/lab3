@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session_factory
 from app.models.match import Match, MatchPlayer, Patch
+from app.services.opendota_api import OpenDotaClient
 from app.services.steam_api import SteamAPIClient, SteamAPIError
 
 logger = logging.getLogger(__name__)
@@ -75,17 +76,23 @@ async def fetch_and_store_matches(steam_id64: int) -> list[int]:
     client = SteamAPIClient()
     account_id = client.steam_id64_to_account_id(steam_id64)
 
-    try:
-        history = await client.get_match_history(account_id, matches_requested=25)
-    except SteamAPIError as e:
-        logger.warning("Failed to fetch match history for %s: %s", steam_id64, e)
-        return []
+    history = await client.get_match_history(account_id, matches_requested=25)
 
     matches_data = history.get("matches", [])
     if not matches_data:
         logger.info("No matches found for %s", steam_id64)
         return []
 
+    # Build mapping of match_id → user's player_slot from history data,
+    # so we can identify the user even when OpenDota omits their account_id.
+    user_slot_by_match: dict[int, int | None] = {}
+    for m in matches_data:
+        for p in m.get("players", []):
+            if p.get("account_id") == account_id:
+                user_slot_by_match[m["match_id"]] = p.get("player_slot")
+                break
+
+    opendota = OpenDotaClient()
     new_match_ids = []
 
     async with async_session_factory() as session:
@@ -103,12 +110,17 @@ async def fetch_and_store_matches(steam_id64: int) -> list[int]:
 
             start_time = SteamAPIClient.parse_start_time(m["start_time"])
 
-            # Fetch full details for this match
+            # Fetch full details: try Steam first, fall back to OpenDota
             try:
                 details = await client.get_match_details(match_id)
-            except SteamAPIError as e:
-                logger.warning("Failed to fetch details for match %s: %s", match_id, e)
-                continue
+            except SteamAPIError:
+                try:
+                    details = await opendota.get_match(match_id)
+                except Exception as e:
+                    logger.warning(
+                        "Failed to fetch details for match %s: %s", match_id, e
+                    )
+                    continue
 
             patch_id = determine_patch(start_time, patches)
 
@@ -125,11 +137,21 @@ async def fetch_and_store_matches(steam_id64: int) -> list[int]:
             )
             session.add(match)
 
+            user_slot = user_slot_by_match.get(match_id)
+
             # Store players
             for p in details.get("players", []):
-                player_steam_id = p.get("account_id")
-                if player_steam_id:
-                    player_steam_id += 76561197960265728  # Convert to SteamID64
+                raw_account_id = p.get("account_id")
+                player_slot = p.get("player_slot", 0)
+
+                # Resolve steam_id for this player
+                if raw_account_id and raw_account_id != 4294967295:
+                    player_steam_id = raw_account_id + 76561197960265728
+                elif player_slot == user_slot:
+                    # Player slot matches the requesting user from match history
+                    player_steam_id = steam_id64
+                else:
+                    player_steam_id = None
 
                 items_dict = {}
                 for i in range(6):
@@ -140,7 +162,7 @@ async def fetch_and_store_matches(steam_id64: int) -> list[int]:
                 mp = MatchPlayer(
                     match_id=match_id,
                     steam_id=player_steam_id,
-                    player_slot=p.get("player_slot", 0),
+                    player_slot=player_slot,
                     hero_id=p.get("hero_id", 0),
                     kills=p.get("kills"),
                     deaths=p.get("deaths"),
