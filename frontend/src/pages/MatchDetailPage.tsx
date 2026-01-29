@@ -129,7 +129,9 @@ export default function MatchDetailPage() {
           <span>Duration: {formatDuration(match.duration_secs)}</span>
           <span>{formatDate(match.start_time)}</span>
           {match.avg_mmr && <span>~{match.avg_mmr} MMR</span>}
-          <span className="capitalize">Replay: {match.replay_state}</span>
+          {match.replay_state === 'parsed' && (
+            <span className="text-green-400">Replay Parsed</span>
+          )}
         </div>
       </div>
 

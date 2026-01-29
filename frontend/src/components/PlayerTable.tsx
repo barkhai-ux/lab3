@@ -1,9 +1,67 @@
 import type { MatchPlayerOut } from '../types';
 import { getHeroName, getHeroIcon } from '../data/heroes';
+import { getItemName, getItemIcon } from '../data/items';
 
 interface Props {
   players: MatchPlayerOut[];
   currentSteamId?: number;
+}
+
+function ItemSlot({ itemId }: { itemId: number | undefined }) {
+  if (!itemId || itemId === 0) {
+    return <div className="w-9 h-7 bg-gray-800 rounded border border-gray-700" />;
+  }
+
+  const icon = getItemIcon(itemId);
+  const name = getItemName(itemId);
+
+  if (!icon) {
+    return (
+      <div className="w-9 h-7 bg-gray-700 rounded border border-gray-600 flex items-center justify-center text-xs text-gray-400">
+        ?
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative group">
+      <img
+        src={icon}
+        alt={name}
+        className="w-9 h-7 rounded border border-gray-600 object-cover cursor-pointer hover:border-dota-gold transition-colors"
+      />
+      {/* Tooltip */}
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          <img src={icon} alt={name} className="w-8 h-6 rounded object-cover" />
+          <span className="text-sm font-medium text-dota-gold">{name}</span>
+        </div>
+        {/* Arrow */}
+        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-600" />
+      </div>
+    </div>
+  );
+}
+
+function PlayerItems({ items }: { items: Record<string, number> | null }) {
+  if (!items) return null;
+
+  const itemIds = [
+    items.item_0,
+    items.item_1,
+    items.item_2,
+    items.item_3,
+    items.item_4,
+    items.item_5,
+  ];
+
+  return (
+    <div className="flex gap-0.5">
+      {itemIds.map((id, i) => (
+        <ItemSlot key={i} itemId={id} />
+      ))}
+    </div>
+  );
 }
 
 export default function PlayerTable({ players, currentSteamId }: Props) {
@@ -50,6 +108,7 @@ function TeamTable({
               <th className="text-center px-2">K</th>
               <th className="text-center px-2">D</th>
               <th className="text-center px-2">A</th>
+              <th className="text-left px-2">Items</th>
               <th className="text-center px-2">GPM</th>
               <th className="text-center px-2">XPM</th>
               <th className="text-center px-2">LH</th>
@@ -89,6 +148,9 @@ function TeamTable({
                   <td className="text-center px-2 text-green-400">{p.kills ?? '-'}</td>
                   <td className="text-center px-2 text-red-400">{p.deaths ?? '-'}</td>
                   <td className="text-center px-2 text-blue-400">{p.assists ?? '-'}</td>
+                  <td className="px-2">
+                    <PlayerItems items={p.items} />
+                  </td>
                   <td className="text-center px-2 text-dota-gold">{p.gpm ?? '-'}</td>
                   <td className="text-center px-2">{p.xpm ?? '-'}</td>
                   <td className="text-center px-2">{p.last_hits ?? '-'}</td>

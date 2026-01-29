@@ -67,17 +67,6 @@ export default function MatchCard({ match }: Props) {
         </div>
         <div className="flex items-center gap-3">
           <span
-            className={`text-xs font-medium px-2 py-0.5 rounded ${
-              match.replay_state === 'parsed'
-                ? 'bg-green-900/50 text-green-300'
-                : match.replay_state === 'pending'
-                  ? 'bg-yellow-900/50 text-yellow-300'
-                  : 'bg-gray-700 text-gray-400'
-            }`}
-          >
-            {match.replay_state}
-          </span>
-          <span
             className={`text-sm font-semibold ${
               match.player_won ? 'text-green-400' : 'text-red-400'
             }`}

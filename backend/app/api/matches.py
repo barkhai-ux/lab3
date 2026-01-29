@@ -249,11 +249,22 @@ async def trigger_analysis(
         task = chain.apply_async()
         return TaskStatusOut(task_id=task.id, status="queued")
     except Exception:
-        # Celery/Redis unavailable — run analysis inline (skip replay download)
+        # Celery/Redis unavailable — run analysis inline
         logger.warning("Celery unavailable, running analysis inline")
         from app.analysis.engine import analyze_match
+        from app.workers.replay import download_replay, parse_and_store_events
 
         try:
+            # Try to download and parse replay inline
+            try:
+                replay_path = await download_replay(match_id, db)
+                if replay_path:
+                    await parse_and_store_events(match_id, replay_path, db)
+                    await db.commit()
+            except Exception as replay_err:
+                logger.warning("Inline replay processing failed: %s", replay_err)
+                # Continue with analysis even if replay fails
+
             analysis = await analyze_match(match_id, current_user.steam_id, db)
             await db.commit()
 
