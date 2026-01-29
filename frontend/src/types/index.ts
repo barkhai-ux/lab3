@@ -72,6 +72,17 @@ export interface TimelineOut {
   total_events: number;
 }
 
+// ── Vision / Ward Data ───────────────────────────────
+
+export interface WardPosition {
+  type: 'observer' | 'sentry';
+  x: number;
+  y: number;
+  game_time_secs: number;
+  player_slot: number;
+  team: 'radiant' | 'dire';
+}
+
 // ── Analysis ──────────────────────────────────────────
 
 export interface FindingOut {

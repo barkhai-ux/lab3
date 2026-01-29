@@ -31,6 +31,54 @@ class VisionDetector(BaseDetector):
         # Only flag vision metrics for support roles
         is_support = ctx.role in (4, 5)
 
+        # Collect ALL ward events (both teams) for map visualization
+        all_ward_events = [
+            e for e in ctx.events
+            if e.get("event_type") == "ward_placed"
+        ]
+
+        # Build ward positions data for frontend map
+        ward_positions = []
+        for e in all_ward_events:
+            data = e.get("data", {})
+            player_slot = e.get("player_slot", 0)
+            ward_positions.append({
+                "type": data.get("ward_type"),  # "observer" or "sentry"
+                "x": data.get("x"),
+                "y": data.get("y"),
+                "game_time_secs": e.get("game_time_secs"),
+                "player_slot": player_slot,
+                "team": "radiant" if player_slot < 5 else "dire",
+            })
+
+        # Add ward map data finding for frontend visualization
+        if ward_positions:
+            radiant_obs = sum(1 for w in ward_positions if w["team"] == "radiant" and w["type"] == "observer")
+            radiant_sentry = sum(1 for w in ward_positions if w["team"] == "radiant" and w["type"] == "sentry")
+            dire_obs = sum(1 for w in ward_positions if w["team"] == "dire" and w["type"] == "observer")
+            dire_sentry = sum(1 for w in ward_positions if w["team"] == "dire" and w["type"] == "sentry")
+
+            findings.append(Finding(
+                detector_name=self.name,
+                category=self.category,
+                severity="info",
+                confidence=1.0,
+                title="Vision control map data",
+                description=(
+                    f"{len(ward_positions)} wards placed during the match. "
+                    f"Radiant: {radiant_obs} obs, {radiant_sentry} sentries. "
+                    f"Dire: {dire_obs} obs, {dire_sentry} sentries."
+                ),
+                data={
+                    "ward_positions": ward_positions,
+                    "total_wards": len(ward_positions),
+                    "radiant_observers": radiant_obs,
+                    "radiant_sentries": radiant_sentry,
+                    "dire_observers": dire_obs,
+                    "dire_sentries": dire_sentry,
+                },
+            ))
+
         # Count wards placed by this player
         ward_events = [
             e for e in ctx.events

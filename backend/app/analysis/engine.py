@@ -19,9 +19,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.analysis.baselines import get_baseline, mmr_to_bracket
 from app.analysis.detectors.base import BaseDetector, DetectorContext, Finding
 from app.analysis.detectors.deaths import DeathContextDetector
+from app.analysis.detectors.draft import DraftAnalysisDetector
 from app.analysis.detectors.farming import FarmingDetector
 from app.analysis.detectors.items import ItemTimingDetector
 from app.analysis.detectors.objectives import ObjectiveConversionDetector
+from app.analysis.detectors.team import TeamAnalysisDetector
 from app.analysis.detectors.vision import VisionDetector
 from app.analysis.features.extractor import extract_player_states
 from app.analysis.features.fights import detect_teamfights
@@ -40,6 +42,8 @@ DETECTOR_CLASSES: list[Type[BaseDetector]] = [
     ItemTimingDetector,
     VisionDetector,
     ObjectiveConversionDetector,
+    DraftAnalysisDetector,
+    TeamAnalysisDetector,
 ]
 
 

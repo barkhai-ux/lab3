@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import type { MatchDetailOut, MatchAnalysisOut } from '../types';
+import type { MatchDetailOut, MatchAnalysisOut, WardPosition } from '../types';
 import { getMatch, getAnalysis, triggerAnalysis } from '../api/matches';
 import PlayerTable from '../components/PlayerTable';
 import AnalysisDisplay from '../components/AnalysisDisplay';
+import MiniMap from '../components/MiniMap';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 
@@ -73,6 +74,30 @@ export default function MatchDetailPage() {
     }
   };
 
+  // Extract ward positions from vision control finding
+  const wardPositions = useMemo<WardPosition[]>(() => {
+    if (!analysis) return [];
+
+    const visionFinding = analysis.findings.find(
+      (f) => f.detector_name === 'vision_control' && f.title === 'Vision control map data'
+    );
+
+    if (!visionFinding?.data?.ward_positions) return [];
+
+    // Type guard and transform the data
+    const rawPositions = visionFinding.data.ward_positions as Array<Record<string, unknown>>;
+    return rawPositions
+      .filter((w) => w.x != null && w.y != null && w.type != null)
+      .map((w) => ({
+        type: w.type as 'observer' | 'sentry',
+        x: Number(w.x),
+        y: Number(w.y),
+        game_time_secs: Number(w.game_time_secs ?? 0),
+        player_slot: Number(w.player_slot ?? 0),
+        team: (w.team as 'radiant' | 'dire') ?? 'radiant',
+      }));
+  }, [analysis]);
+
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error} />;
   if (!match) return <ErrorMessage message="Match not found" />;
@@ -133,6 +158,17 @@ export default function MatchDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Vision Control Map */}
+      {wardPositions.length > 0 && (
+        <div className="bg-dota-surface border border-gray-700 rounded-lg p-6">
+          <h2 className="text-lg font-semibold mb-4">Vision Control</h2>
+          <MiniMap
+            wardPositions={wardPositions}
+            matchDuration={match.duration_secs}
+          />
+        </div>
+      )}
     </div>
   );
 }

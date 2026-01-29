@@ -240,10 +240,37 @@ async def trigger_analysis(
     except Exception:
         # Celery/Redis unavailable — run analysis inline (skip replay download)
         logger.warning("Celery unavailable, running analysis inline")
-        from app.workers.analysis import run_analysis
+        from app.analysis.engine import analyze_match
 
         try:
-            result = run_analysis(match_id, current_user.steam_id)
+            analysis = await analyze_match(match_id, current_user.steam_id, db)
+            await db.commit()
+
+            if analysis is None:
+                result = {
+                    "match_id": match_id,
+                    "steam_id": current_user.steam_id,
+                    "status": "skipped",
+                    "reason": "Analysis not possible (missing data or already exists)",
+                }
+            else:
+                # Query findings count to avoid lazy-load issues in async context
+                findings_count_result = await db.execute(
+                    select(func.count())
+                    .select_from(AnalysisFinding)
+                    .where(AnalysisFinding.analysis_id == analysis.id)
+                )
+                findings_count = findings_count_result.scalar() or 0
+
+                result = {
+                    "match_id": match_id,
+                    "steam_id": current_user.steam_id,
+                    "status": "completed",
+                    "analysis_id": analysis.id,
+                    "overall_score": analysis.overall_score,
+                    "findings_count": findings_count,
+                }
+
             return TaskStatusOut(
                 task_id=uuid.uuid4().hex,
                 status="completed",
