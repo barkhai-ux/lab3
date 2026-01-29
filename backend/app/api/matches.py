@@ -51,32 +51,43 @@ async def list_matches(
     total_result = await db.execute(count_q)
     total = total_result.scalar() or 0
 
-    # Fetch match IDs for this user
-    match_ids_q = (
-        select(MatchPlayer.match_id)
+    # Fetch match IDs and player info for this user
+    match_player_q = (
+        select(MatchPlayer.match_id, MatchPlayer.hero_id, MatchPlayer.player_slot)
         .where(MatchPlayer.steam_id == steam_id)
         .join(Match, Match.match_id == MatchPlayer.match_id)
         .order_by(Match.start_time.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
     )
-    match_ids_result = await db.execute(match_ids_q)
-    match_ids = [row[0] for row in match_ids_result.all()]
+    match_player_result = await db.execute(match_player_q)
+    player_info = {row[0]: (row[1], row[2]) for row in match_player_result.all()}
 
-    if not match_ids:
+    if not player_info:
         return MatchListOut(matches=[], total=total, page=page, per_page=per_page)
 
     # Load full match data
     matches_q = (
         select(Match)
-        .where(Match.match_id.in_(match_ids))
+        .where(Match.match_id.in_(player_info.keys()))
         .order_by(Match.start_time.desc())
     )
     matches_result = await db.execute(matches_q)
     matches = matches_result.scalars().all()
 
+    # Build response with player-specific data
+    match_list = []
+    for m in matches:
+        hero_id, player_slot = player_info[m.match_id]
+        is_radiant = player_slot < 128
+        player_won = m.radiant_win if is_radiant else not m.radiant_win
+        match_data = MatchOut.model_validate(m)
+        match_data.player_hero_id = hero_id
+        match_data.player_won = player_won
+        match_list.append(match_data)
+
     return MatchListOut(
-        matches=[MatchOut.model_validate(m) for m in matches],
+        matches=match_list,
         total=total,
         page=page,
         per_page=per_page,

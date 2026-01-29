@@ -36,6 +36,8 @@ class MatchOut(BaseModel):
     avg_mmr: int | None = None
     replay_state: str
     created_at: datetime
+    player_hero_id: int | None = None
+    player_won: bool | None = None
 
     model_config = {"from_attributes": True}
 

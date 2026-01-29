@@ -142,7 +142,12 @@ export default function MatchDetailPage() {
       {/* Analysis */}
       <div className="bg-dota-surface border border-gray-700 rounded-lg p-6">
         {analysis ? (
-          <AnalysisDisplay analysis={analysis} />
+          <AnalysisDisplay
+            analysis={analysis}
+            players={match.players}
+            currentSteamId={currentSteamId}
+            wardPositions={wardPositions}
+          />
         ) : (
           <div className="text-center py-6">
             <p className="text-gray-400 mb-4">
@@ -159,8 +164,8 @@ export default function MatchDetailPage() {
         )}
       </div>
 
-      {/* Vision Control Map */}
-      {wardPositions.length > 0 && (
+      {/* Full Vision Control Map (only show if no analysis yet) */}
+      {!analysis && wardPositions.length > 0 && (
         <div className="bg-dota-surface border border-gray-700 rounded-lg p-6">
           <h2 className="text-lg font-semibold mb-4">Vision Control</h2>
           <MiniMap

@@ -23,6 +23,8 @@ export interface MatchOut {
   avg_mmr: number | null;
   replay_state: string;
   created_at: string;
+  player_hero_id: number | null;
+  player_won: boolean | null;
 }
 
 export interface MatchPlayerOut {

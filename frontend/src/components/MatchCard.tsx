@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { MatchOut } from '../types';
+import { getHeroName, getHeroIcon } from '../data/heroes';
 
 interface Props {
   match: MatchOut;
@@ -34,6 +35,8 @@ function formatDate(iso: string): string {
 
 export default function MatchCard({ match }: Props) {
   const mode = GAME_MODES[match.game_mode] ?? `Mode ${match.game_mode}`;
+  const heroName = match.player_hero_id ? getHeroName(match.player_hero_id) : null;
+  const heroIcon = match.player_hero_id ? getHeroIcon(match.player_hero_id) : null;
 
   return (
     <Link
@@ -42,9 +45,21 @@ export default function MatchCard({ match }: Props) {
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <span className="text-gray-400 font-mono text-sm">
-            #{match.match_id}
-          </span>
+          {heroIcon && (
+            <img
+              src={heroIcon}
+              alt={heroName ?? ''}
+              className="w-10 h-6 object-cover rounded"
+            />
+          )}
+          <div className="flex flex-col">
+            <span className="text-sm text-gray-200">
+              {heroName ?? 'Unknown Hero'}
+            </span>
+            <span className="text-gray-500 font-mono text-xs">
+              #{match.match_id}
+            </span>
+          </div>
           <span className="text-sm text-gray-300">{mode}</span>
           <span className="text-sm text-gray-400">
             {formatDuration(match.duration_secs)}
@@ -64,10 +79,10 @@ export default function MatchCard({ match }: Props) {
           </span>
           <span
             className={`text-sm font-semibold ${
-              match.radiant_win ? 'text-dota-radiant' : 'text-dota-dire'
+              match.player_won ? 'text-green-400' : 'text-red-400'
             }`}
           >
-            {match.radiant_win ? 'Radiant Win' : 'Dire Win'}
+            {match.player_won ? 'Won' : 'Lost'}
           </span>
         </div>
       </div>

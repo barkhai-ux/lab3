@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analysis.baselines import get_baseline, mmr_to_bracket
 from app.analysis.detectors.base import BaseDetector, DetectorContext, Finding
+from app.data.hero_matchups import get_hero_name
 from app.analysis.detectors.deaths import DeathContextDetector
 from app.analysis.detectors.draft import DraftAnalysisDetector
 from app.analysis.detectors.farming import FarmingDetector
@@ -303,12 +304,13 @@ def _build_summary(
     role_name = {1: "Carry", 2: "Mid", 3: "Offlane", 4: "Soft Support", 5: "Hard Support"}.get(
         role, "Unknown"
     )
+    hero_name = get_hero_name(hero_id)
 
     critical = [f for f in findings if f.severity == "critical"]
     warnings = [f for f in findings if f.severity == "warning"]
     positives = [f for f in findings if f.severity == "info"]
 
-    parts = [f"{outcome} as {role_name} (Hero ID {hero_id})."]
+    parts = [f"{outcome} as {hero_name} ({role_name})."]
 
     if critical:
         parts.append(f"{len(critical)} critical issue(s) identified.")
