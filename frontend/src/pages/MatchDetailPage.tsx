@@ -1,37 +1,27 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import type { MatchDetailOut, MatchAnalysisOut, WardPosition } from '../types';
-import { getMatch, getAnalysis, triggerAnalysis } from '../api/matches';
+import { useParams } from 'react-router-dom';
+import type { MatchDetailOut, MatchAnalysisOut, WardPosition, TimelineOut } from '../types';
+import { getMatch, getAnalysis, getTimeline, triggerAnalysis, fetchReplay } from '../api/matches';
+import MatchHeader from '../components/match/MatchHeader';
+import TeamComparisonPanel from '../components/match/TeamComparisonPanel';
+import TimelineChart from '../components/charts/TimelineChart';
+import ObjectiveTimeline from '../components/charts/ObjectiveTimeline';
+import EventList from '../components/match/EventList';
+import AnalystInsightsPanel from '../components/match/AnalystInsightsPanel';
 import PlayerTable from '../components/PlayerTable';
-import AnalysisDisplay from '../components/AnalysisDisplay';
 import MiniMap from '../components/MiniMap';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
-
-function formatDuration(secs: number): string {
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 export default function MatchDetailPage() {
   const { matchId } = useParams<{ matchId: string }>();
   const [match, setMatch] = useState<MatchDetailOut | null>(null);
   const [analysis, setAnalysis] = useState<MatchAnalysisOut | null>(null);
+  const [timeline, setTimeline] = useState<TimelineOut | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [fetchingReplay, setFetchingReplay] = useState(false);
 
   const steamId = localStorage.getItem('steam_id');
   const currentSteamId = steamId ? Number(steamId) : undefined;
@@ -46,10 +36,12 @@ export default function MatchDetailPage() {
     Promise.all([
       getMatch(id),
       getAnalysis(id),
+      getTimeline(id).catch(() => null),
     ])
-      .then(([matchData, analysisData]) => {
+      .then(([matchData, analysisData, timelineData]) => {
         setMatch(matchData);
         setAnalysis(analysisData);
+        setTimeline(timelineData);
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : 'Failed to load match');
@@ -62,7 +54,6 @@ export default function MatchDetailPage() {
     setAnalyzing(true);
     try {
       await triggerAnalysis(Number(matchId));
-      // Poll for analysis after a delay
       setTimeout(async () => {
         const result = await getAnalysis(Number(matchId));
         setAnalysis(result);
@@ -71,6 +62,31 @@ export default function MatchDetailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start analysis');
       setAnalyzing(false);
+    }
+  };
+
+  const handleFetchReplay = async () => {
+    if (!matchId) return;
+    setFetchingReplay(true);
+    try {
+      await fetchReplay(Number(matchId));
+      // Poll for updated match data after a delay
+      setTimeout(async () => {
+        try {
+          const [matchData, timelineData] = await Promise.all([
+            getMatch(Number(matchId)),
+            getTimeline(Number(matchId)).catch(() => null),
+          ]);
+          setMatch(matchData);
+          setTimeline(timelineData);
+        } catch {
+          // Ignore polling errors
+        }
+        setFetchingReplay(false);
+      }, 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch replay');
+      setFetchingReplay(false);
     }
   };
 
@@ -84,7 +100,6 @@ export default function MatchDetailPage() {
 
     if (!visionFinding?.data?.ward_positions) return [];
 
-    // Type guard and transform the data
     const rawPositions = visionFinding.data.ward_positions as Array<Record<string, unknown>>;
     return rawPositions
       .filter((w) => w.x != null && w.y != null && w.type != null)
@@ -98,84 +113,101 @@ export default function MatchDetailPage() {
       }));
   }, [analysis]);
 
+  // Generate timeline chart data from timeline events
+  const timelineChartData = useMemo(() => {
+    if (!timeline) return [];
+
+    // Look for gold/xp snapshot events
+    const snapshots = timeline.events.filter(
+      (e) => e.event_type === 'interval' || e.event_type === 'gold_xp_snapshot'
+    );
+
+    if (snapshots.length === 0) return [];
+
+    return snapshots
+      .filter((e) => e.data?.radiant_gold !== undefined)
+      .map((e) => ({
+        time: e.game_time_secs,
+        goldAdvantage: ((e.data?.radiant_gold as number) ?? 0) - ((e.data?.dire_gold as number) ?? 0),
+        xpAdvantage: ((e.data?.radiant_xp as number) ?? 0) - ((e.data?.dire_xp as number) ?? 0),
+      }));
+  }, [timeline]);
+
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error} />;
   if (!match) return <ErrorMessage message="Match not found" />;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Link
-          to="/"
-          className="text-gray-400 hover:text-white text-sm"
-        >
-          &larr; Back
-        </Link>
+      {/* Match Header */}
+      <MatchHeader
+        match={match}
+        onFetchReplay={handleFetchReplay}
+        fetchingReplay={fetchingReplay}
+      />
+
+      {/* Team Comparison + Timeline Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TeamComparisonPanel players={match.players} />
+        <TimelineChart data={timelineChartData} />
       </div>
 
-      {/* Match Header */}
-      <div className="bg-dota-surface border border-gray-700 rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold">Match #{match.match_id}</h1>
-          <span
-            className={`text-lg font-bold ${
-              match.radiant_win ? 'text-dota-radiant' : 'text-dota-dire'
-            }`}
-          >
-            {match.radiant_win ? 'Radiant Victory' : 'Dire Victory'}
-          </span>
+      {/* Objective Timeline */}
+      {timeline && timeline.events.length > 0 && (
+        <ObjectiveTimeline events={timeline.events} duration={match.duration_secs} />
+      )}
+
+      {/* Player Performance Table */}
+      <div className="panel">
+        <div className="panel-header">Player Performance</div>
+        <div className="p-4">
+          <PlayerTable players={match.players} currentSteamId={currentSteamId} />
         </div>
-        <div className="flex gap-6 text-sm text-gray-400">
-          <span>Duration: {formatDuration(match.duration_secs)}</span>
-          <span>{formatDate(match.start_time)}</span>
-          {match.avg_mmr && <span>~{match.avg_mmr} MMR</span>}
-          {match.replay_state === 'parsed' && (
-            <span className="text-green-400">Replay Parsed</span>
+      </div>
+
+      {/* Analysis + Event List + Vision Map */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Analysis Panel */}
+        <div>
+          {analysis ? (
+            <AnalystInsightsPanel analysis={analysis} />
+          ) : (
+            <div className="panel p-6 text-center">
+              <p className="text-dota-text-muted mb-4">
+                No analysis available for this match yet.
+              </p>
+              <button
+                onClick={handleAnalyze}
+                disabled={analyzing}
+                className="btn btn-primary"
+              >
+                {analyzing ? 'Analyzing...' : 'Analyze Match'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Right column: Event List + Vision Map */}
+        <div className="space-y-6">
+          {timeline && timeline.events.length > 0 && (
+            <EventList events={timeline.events} />
+          )}
+
+          {wardPositions.length > 0 && (
+            <div className="panel p-4">
+              <div className="panel-header mb-4 px-0 pt-0 border-0">Vision Control</div>
+              <div className="flex justify-center">
+                <div className="max-w-sm">
+                  <MiniMap
+                    wardPositions={wardPositions}
+                    matchDuration={match.duration_secs}
+                  />
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
-
-      {/* Players */}
-      <div className="bg-dota-surface border border-gray-700 rounded-lg p-6">
-        <h2 className="text-lg font-semibold mb-4">Players</h2>
-        <PlayerTable players={match.players} currentSteamId={currentSteamId} />
-      </div>
-
-      {/* Analysis */}
-      <div className="bg-dota-surface border border-gray-700 rounded-lg p-6">
-        {analysis ? (
-          <AnalysisDisplay
-            analysis={analysis}
-            players={match.players}
-            currentSteamId={currentSteamId}
-            wardPositions={wardPositions}
-          />
-        ) : (
-          <div className="text-center py-6">
-            <p className="text-gray-400 mb-4">
-              No analysis available for this match yet.
-            </p>
-            <button
-              onClick={handleAnalyze}
-              disabled={analyzing}
-              className="px-6 py-2 bg-dota-gold text-dota-bg font-semibold rounded hover:bg-dota-gold/90 transition-colors disabled:opacity-50"
-            >
-              {analyzing ? 'Analyzing...' : 'Analyze Match'}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Full Vision Control Map (only show if no analysis yet) */}
-      {!analysis && wardPositions.length > 0 && (
-        <div className="bg-dota-surface border border-gray-700 rounded-lg p-6">
-          <h2 className="text-lg font-semibold mb-4">Vision Control</h2>
-          <MiniMap
-            wardPositions={wardPositions}
-            matchDuration={match.duration_secs}
-          />
-        </div>
-      )}
     </div>
   );
 }

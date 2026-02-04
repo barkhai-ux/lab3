@@ -5,12 +5,15 @@ interface Props {
 
 export default function ErrorMessage({ message, onRetry }: Props) {
   return (
-    <div className="bg-red-900/30 border border-red-500 rounded-lg p-4 text-center">
-      <p className="text-red-300">{message}</p>
+    <div className="panel border-dota-dire p-4">
+      <div className="flex items-center gap-3">
+        <span className="text-dota-dire text-sm font-mono">ERROR</span>
+        <span className="text-dota-text-secondary">{message}</span>
+      </div>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-2 px-4 py-1 bg-red-700 rounded hover:bg-red-600 text-sm"
+          className="mt-3 btn btn-secondary text-sm"
         >
           Retry
         </button>

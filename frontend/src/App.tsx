@@ -1,10 +1,11 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
-import Layout from './components/Layout';
+import SidebarLayout from './components/layout/SidebarLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import AuthCallback from './pages/AuthCallback';
 import DashboardPage from './pages/DashboardPage';
+import MatchesPage from './pages/MatchesPage';
 import MatchDetailPage from './pages/MatchDetailPage';
 import InsightsPage from './pages/InsightsPage';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -32,9 +33,10 @@ function App() {
         element={<ProtectedRoute isAuthenticated={auth.isAuthenticated} />}
       >
         <Route
-          element={<Layout user={auth.user!} onLogout={auth.logout} />}
+          element={<SidebarLayout user={auth.user!} onLogout={auth.logout} />}
         >
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/matches" element={<MatchesPage />} />
           <Route path="/match/:matchId" element={<MatchDetailPage />} />
           <Route path="/insights" element={<InsightsPage />} />
         </Route>

@@ -218,6 +218,70 @@ async def get_analysis(
     return MatchAnalysisOut.model_validate(analysis)
 
 
+@router.post("/{match_id}/fetch-replay", response_model=TaskStatusOut)
+async def fetch_replay(
+    match_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Download and parse the replay for a match.
+
+    This will:
+    1. Download the replay (if not cached).
+    2. Parse the replay into events.
+    """
+    # Verify the match exists
+    result = await db.execute(
+        select(Match).where(Match.match_id == match_id)
+    )
+    match = result.scalar_one_or_none()
+    if match is None:
+        raise HTTPException(status_code=404, detail="Match not found")
+
+    # Check if already parsed
+    if match.replay_state == "parsed":
+        return TaskStatusOut(
+            task_id=uuid.uuid4().hex,
+            status="completed",
+            result={"match_id": match_id, "status": "already_parsed"},
+        )
+
+    try:
+        # Try to queue the task
+        task = download_and_parse_replay.apply_async(args=[match_id])
+        return TaskStatusOut(task_id=task.id, status="queued")
+    except Exception:
+        # Celery/Redis unavailable — run inline
+        logger.warning("Celery unavailable, downloading replay inline")
+        from app.workers.replay import download_replay, parse_and_store_events
+
+        try:
+            replay_path = await download_replay(match_id, db)
+            if replay_path:
+                await parse_and_store_events(match_id, replay_path, db)
+                await db.commit()
+                return TaskStatusOut(
+                    task_id=uuid.uuid4().hex,
+                    status="completed",
+                    result={"match_id": match_id, "status": "parsed"},
+                )
+            else:
+                # Update match state to indicate replay unavailable
+                match.replay_state = "unavailable"
+                await db.commit()
+                return TaskStatusOut(
+                    task_id=uuid.uuid4().hex,
+                    status="completed",
+                    result={"match_id": match_id, "status": "unavailable"},
+                )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Replay fetch failed: {exc}",
+            )
+
+
 @router.post("/{match_id}/analyze", response_model=TaskStatusOut)
 async def trigger_analysis(
     match_id: int,

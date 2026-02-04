@@ -56,3 +56,11 @@ export async function triggerAnalysis(
     method: 'POST',
   });
 }
+
+export async function fetchReplay(
+  matchId: number,
+): Promise<TaskStatusOut> {
+  return request<TaskStatusOut>(`/api/matches/${matchId}/fetch-replay`, {
+    method: 'POST',
+  });
+}

@@ -4,6 +4,121 @@
 
 @layer base {
   body {
-    @apply bg-dota-bg text-gray-100 antialiased;
+    @apply bg-dota-bg text-dota-text-primary antialiased font-sans;
+    font-feature-settings: 'tnum' on, 'lnum' on;
   }
+
+  *:not(.animate-spin) {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply bg-dota-surface border border-dota-border rounded-lg;
+  }
+
+  .panel-header {
+    @apply text-sm font-semibold text-dota-text-primary uppercase tracking-wide px-4 py-3 border-b border-dota-border;
+  }
+
+  .data-table {
+    @apply w-full text-sm;
+  }
+
+  .data-table th {
+    @apply text-left text-label uppercase tracking-wider text-dota-text-muted font-medium py-2 px-3 border-b border-dota-border cursor-pointer select-none;
+  }
+
+  .data-table th:hover {
+    @apply text-dota-text-secondary bg-dota-accent;
+  }
+
+  .data-table th.sorted {
+    @apply text-dota-gold;
+  }
+
+  .data-table td {
+    @apply py-2 px-3 border-b border-dota-border/50 text-dota-text-secondary;
+  }
+
+  .data-table tr:hover td {
+    @apply bg-dota-accent/50;
+  }
+
+  .data-table tr.selected td {
+    @apply bg-dota-accent;
+  }
+
+  .stat-card {
+    @apply bg-dota-surface border border-dota-border rounded-lg p-3;
+  }
+
+  .stat-card-label {
+    @apply text-label uppercase tracking-wider text-dota-text-muted mb-1;
+  }
+
+  .stat-card-value {
+    @apply text-xl font-bold text-dota-text-primary font-mono;
+  }
+
+  .stat-card-delta {
+    @apply text-stat font-mono;
+  }
+
+  .stat-card-delta.positive {
+    @apply text-dota-radiant;
+  }
+
+  .stat-card-delta.negative {
+    @apply text-dota-dire;
+  }
+
+  .btn {
+    @apply px-4 py-2 rounded font-medium text-sm border border-transparent;
+  }
+
+  .btn-primary {
+    @apply bg-dota-gold text-dota-bg hover:bg-dota-gold/90;
+  }
+
+  .btn-secondary {
+    @apply bg-dota-accent text-dota-text-primary border-dota-border hover:bg-dota-accent/80;
+  }
+
+  .input {
+    @apply bg-dota-bg border border-dota-border rounded px-3 py-2 text-sm text-dota-text-primary placeholder-dota-text-muted focus:outline-none focus:border-dota-gold;
+  }
+}
+
+@layer utilities {
+  .tabular-nums {
+    font-feature-settings: 'tnum' on, 'lnum' on;
+  }
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #121218;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2f2f3a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f4a;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2f2f3a #121218;
 }
