@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import type { MatchDetailOut, MatchAnalysisOut, WardPosition } from '../types';
-import { getMatch, getAnalysis, triggerAnalysis } from '../api/matches';
+import type { MatchDetailOut, MatchAnalysisOut, WardPosition, EventOut } from '../types';
+import { getMatch, getAnalysis, triggerAnalysis, getTimeline } from '../api/matches';
 import PlayerTable from '../components/PlayerTable';
 import AnalysisDisplay from '../components/AnalysisDisplay';
 import MiniMap from '../components/MiniMap';
+import ItemTimings from '../components/ItemTimings';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 
@@ -29,12 +30,26 @@ export default function MatchDetailPage() {
   const { matchId } = useParams<{ matchId: string }>();
   const [match, setMatch] = useState<MatchDetailOut | null>(null);
   const [analysis, setAnalysis] = useState<MatchAnalysisOut | null>(null);
+  const [itemPurchaseEvents, setItemPurchaseEvents] = useState<EventOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
 
   const steamId = localStorage.getItem('steam_id');
   const currentSteamId = steamId ? Number(steamId) : undefined;
+
+  // Function to load all match data
+  const loadMatchData = async (id: number) => {
+    const [matchData, analysisData, timelineData] = await Promise.all([
+      getMatch(id),
+      getAnalysis(id),
+      getTimeline(id, 'item_purchase', 2000).catch(() => ({ events: [] })),
+    ]);
+    setMatch(matchData);
+    setAnalysis(analysisData);
+    setItemPurchaseEvents(timelineData.events ?? []);
+    return { matchData, analysisData, timelineData };
+  };
 
   useEffect(() => {
     if (!matchId) return;
@@ -43,14 +58,7 @@ export default function MatchDetailPage() {
     setLoading(true);
     setError(null);
 
-    Promise.all([
-      getMatch(id),
-      getAnalysis(id),
-    ])
-      .then(([matchData, analysisData]) => {
-        setMatch(matchData);
-        setAnalysis(analysisData);
-      })
+    loadMatchData(id)
       .catch((err) => {
         setError(err instanceof Error ? err.message : 'Failed to load match');
       })
@@ -59,15 +67,38 @@ export default function MatchDetailPage() {
 
   const handleAnalyze = async () => {
     if (!matchId) return;
+    const id = Number(matchId);
     setAnalyzing(true);
+    setError(null);
+
     try {
-      await triggerAnalysis(Number(matchId));
-      // Poll for analysis after a delay
-      setTimeout(async () => {
-        const result = await getAnalysis(Number(matchId));
-        setAnalysis(result);
-        setAnalyzing(false);
-      }, 5000);
+      await triggerAnalysis(id);
+
+      // Poll for analysis completion
+      const pollForAnalysis = async (attempts = 0): Promise<void> => {
+        if (attempts > 30) {
+          throw new Error('Analysis is taking longer than expected. Please refresh the page.');
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        try {
+          const result = await getAnalysis(id);
+          if (result) {
+            // Analysis complete - reload all data
+            await loadMatchData(id);
+            setAnalyzing(false);
+          } else {
+            // Keep polling
+            await pollForAnalysis(attempts + 1);
+          }
+        } catch {
+          // Keep polling on error
+          await pollForAnalysis(attempts + 1);
+        }
+      };
+
+      await pollForAnalysis();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start analysis');
       setAnalyzing(false);
@@ -209,6 +240,18 @@ export default function MatchDetailPage() {
         </div>
         <PlayerTable players={match.players} currentSteamId={currentSteamId} />
       </div>
+
+      {/* Item Timings */}
+      {(itemPurchaseEvents.length > 0 || match.replay_state === 'parsed') && (
+        <div className="dota-card p-6">
+          <ItemTimings
+            events={itemPurchaseEvents}
+            players={match.players}
+            currentSteamId={currentSteamId}
+            matchDuration={match.duration_secs}
+          />
+        </div>
+      )}
 
       {/* Analysis */}
       <div className="dota-card p-6">

@@ -264,6 +264,61 @@ const ITEM_DATA: Record<number, [string, string]> = {
 
 const CDN = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items";
 
+// Reverse lookup: item_name -> item_id
+const ITEM_NAME_TO_ID: Record<string, number> = {};
+for (const [id, [name]] of Object.entries(ITEM_DATA)) {
+  ITEM_NAME_TO_ID[name] = Number(id);
+}
+
+// Key/important items to highlight in timings (with typical timing benchmarks in minutes)
+export const KEY_ITEMS: Record<string, { benchmark: number; tier: 'core' | 'luxury' | 'utility' }> = {
+  // Core farming items
+  'hand_of_midas': { benchmark: 8, tier: 'core' },
+  'bfury': { benchmark: 14, tier: 'core' },
+  'maelstrom': { benchmark: 14, tier: 'core' },
+  'radiance': { benchmark: 18, tier: 'core' },
+
+  // Mobility
+  'blink': { benchmark: 12, tier: 'core' },
+  'force_staff': { benchmark: 14, tier: 'utility' },
+
+  // Survivability
+  'black_king_bar': { benchmark: 20, tier: 'core' },
+  'manta': { benchmark: 20, tier: 'core' },
+  'linken\'s_sphere': { benchmark: 22, tier: 'luxury' },
+  'sphere': { benchmark: 22, tier: 'luxury' },
+  'satanic': { benchmark: 30, tier: 'luxury' },
+  'heart': { benchmark: 30, tier: 'luxury' },
+
+  // Damage items
+  'desolator': { benchmark: 16, tier: 'core' },
+  'butterfly': { benchmark: 28, tier: 'luxury' },
+  'greater_crit': { benchmark: 25, tier: 'luxury' },
+  'monkey_king_bar': { benchmark: 25, tier: 'luxury' },
+  'rapier': { benchmark: 35, tier: 'luxury' },
+  'abyssal_blade': { benchmark: 28, tier: 'luxury' },
+
+  // Support items
+  'arcane_boots': { benchmark: 8, tier: 'utility' },
+  'mekansm': { benchmark: 14, tier: 'utility' },
+  'guardian_greaves': { benchmark: 22, tier: 'utility' },
+  'pipe': { benchmark: 18, tier: 'utility' },
+  'glimmer_cape': { benchmark: 12, tier: 'utility' },
+  'aether_lens': { benchmark: 14, tier: 'utility' },
+
+  // Fighting items
+  'orchid': { benchmark: 18, tier: 'core' },
+  'bloodthorn': { benchmark: 28, tier: 'luxury' },
+  'sheepstick': { benchmark: 28, tier: 'luxury' },
+  'assault': { benchmark: 28, tier: 'luxury' },
+  'shivas_guard': { benchmark: 26, tier: 'luxury' },
+  'skadi': { benchmark: 26, tier: 'luxury' },
+
+  // Aghs
+  'ultimate_scepter': { benchmark: 20, tier: 'core' },
+  'aghanims_shard': { benchmark: 15, tier: 'utility' },
+};
+
 export function getItemName(itemId: number): string {
   return ITEM_DATA[itemId]?.[1] ?? `Item ${itemId}`;
 }
@@ -272,4 +327,25 @@ export function getItemIcon(itemId: number): string {
   const name = ITEM_DATA[itemId]?.[0];
   if (!name) return "";
   return `${CDN}/${name}.png`;
+}
+
+export function getItemIdByName(itemName: string): number | null {
+  // Handle item_ prefix if present
+  const normalizedName = itemName.replace(/^item_/, '');
+  return ITEM_NAME_TO_ID[normalizedName] ?? null;
+}
+
+export function getItemIconByName(itemName: string): string {
+  const normalizedName = itemName.replace(/^item_/, '');
+  return `${CDN}/${normalizedName}.png`;
+}
+
+export function isKeyItem(itemName: string): boolean {
+  const normalizedName = itemName.replace(/^item_/, '');
+  return normalizedName in KEY_ITEMS;
+}
+
+export function getItemBenchmark(itemName: string): number | null {
+  const normalizedName = itemName.replace(/^item_/, '');
+  return KEY_ITEMS[normalizedName]?.benchmark ?? null;
 }
