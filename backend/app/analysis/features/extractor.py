@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 
 SNAPSHOT_INTERVAL_SECS = 60  # Generate a snapshot every 60 game seconds
 
+# Canonical 10 player slots. We prefer Valve/Dota API indexing (0-4 Radiant, 128-132 Dire),
+# because it matches match details data and our DB representation.
+PLAYER_SLOTS: list[int] = [0, 1, 2, 3, 4, 128, 129, 130, 131, 132]
+
 
 @dataclass
 class PlayerState:
@@ -69,7 +73,7 @@ def extract_player_states(
     """
     # Initialize states for all 10 player slots
     states: dict[int, PlayerState] = {}
-    for slot in range(10):
+    for slot in PLAYER_SLOTS:
         states[slot] = PlayerState(player_slot=slot)
 
     # Sort events by game time
@@ -92,7 +96,7 @@ def extract_player_states(
             event_idx += 1
 
         # Take snapshot for all players
-        for slot in range(10):
+        for slot in PLAYER_SLOTS:
             snapshots.append(states[slot].to_snapshot(match_id, next_snapshot_time))
 
         next_snapshot_time += SNAPSHOT_INTERVAL_SECS
@@ -112,9 +116,16 @@ def _apply_event(states: dict[int, PlayerState], event: dict) -> None:
     player_slot = event.get("player_slot")
     data = event.get("data", {})
 
-    if player_slot is not None and 0 <= player_slot <= 9:
-        state = states[player_slot]
-    else:
+    if player_slot is None:
+        return
+
+    try:
+        slot = int(player_slot)
+    except (TypeError, ValueError):
+        return
+
+    state = states.get(slot)
+    if state is None:
         return
 
     if event_type == "position":

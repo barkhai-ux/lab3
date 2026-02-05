@@ -6,7 +6,7 @@ per hero/role/patch/bracket. In production, this would be run periodically
 or after each major patch.
 
 Usage:
-    python -m scripts.seed_baselines
+    python scripts/seed_baselines.py
 """
 
 import asyncio

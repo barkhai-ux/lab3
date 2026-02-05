@@ -437,33 +437,8 @@ export default function AnalysisDisplay({ analysis, players, currentSteamId, war
         )}
       </div>
 
-      {/* Lane Outcomes + Ward Map */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <LaneOutcomes findings={analysis.findings} />
-
-        {wardPositions && wardPositions.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium text-dota-text-secondary flex items-center gap-2">
-              <svg className="w-4 h-4 text-dota-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-              Vision Control
-            </h4>
-            <MiniWardMap wardPositions={wardPositions} />
-            <div className="flex gap-4 text-xs text-dota-text-muted">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
-                Observer
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
-                Sentry
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Lane Outcomes */}
+      <LaneOutcomes findings={analysis.findings} />
 
       {/* Findings by severity */}
       <div className="space-y-6">

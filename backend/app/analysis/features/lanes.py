@@ -43,12 +43,13 @@ def classify_position(x: float, y: float) -> str:
         if abs(x - y) < 50:
             return "mid"
 
-    # Bot lane
-    if y < BOT_Y_THRESHOLD and x > LEFT_X_THRESHOLD:
+    # Bot lane: keep this fairly "tight" to avoid labeling jungle positions as lane.
+    # (e.g. (130, 50) should be jungle, while (200, 30) is clearly bot lane.)
+    if y < BOT_Y_THRESHOLD and x > RIGHT_X_THRESHOLD:
         return "bot"
 
     # Top lane
-    if y > TOP_Y_THRESHOLD and x < RIGHT_X_THRESHOLD:
+    if y > TOP_Y_THRESHOLD and x < LEFT_X_THRESHOLD:
         return "top"
 
     # If not clearly in any lane, it's jungle/roaming
@@ -96,7 +97,10 @@ def infer_lanes(
         most_common_region = region_counts.most_common(1)[0][0]
 
         # Convert region name to lane code based on team
-        is_radiant = slot < 5  # Slots 0-4 are Radiant, 5-9 are Dire
+        # Works with both common slot schemes:
+        # - 0-9 indexing (0-4 Radiant, 5-9 Dire)
+        # - Valve/Dota API indexing (0-4 Radiant, 128-132 Dire)
+        is_radiant = slot < 5
 
         if most_common_region == "mid":
             lane_assignments[slot] = 2
@@ -108,7 +112,7 @@ def infer_lanes(
             lane_assignments[slot] = 4  # jungle
 
     # Fill in any missing slots
-    for slot in range(10):
+    for slot in [0, 1, 2, 3, 4, 128, 129, 130, 131, 132]:
         if slot not in lane_assignments:
             lane_assignments[slot] = 4
 

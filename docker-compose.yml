@@ -1,5 +1,33 @@
 version: "3.9"
 
+x-backend-env: &backend-env
+  # These defaults are set for running via docker-compose (service DNS names).
+  # You can override any value by exporting it in your shell or putting it in a local `.env`.
+  STEAM_API_KEY: ${STEAM_API_KEY:-}
+  STEAM_OPENID_REALM: ${STEAM_OPENID_REALM:-http://localhost:8000}
+  STEAM_OPENID_RETURN_URL: ${STEAM_OPENID_RETURN_URL:-http://localhost:8000/auth/steam/callback}
+
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me}
+  JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+  JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-1440}
+
+  DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://dota2:dota2pass@postgres:5432/dota2analyzer}
+  DATABASE_URL_SYNC: ${DATABASE_URL_SYNC:-postgresql://dota2:dota2pass@postgres:5432/dota2analyzer}
+
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
+  CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
+
+  CLARITY_JAR_PATH: ${CLARITY_JAR_PATH:-/app/parser/clarity.jar}
+  REPLAY_STORAGE_PATH: ${REPLAY_STORAGE_PATH:-/app/data/replays}
+  REPLAY_RETENTION_DAYS: ${REPLAY_RETENTION_DAYS:-7}
+
+  OPENDOTA_API_URL: ${OPENDOTA_API_URL:-https://api.opendota.com/api}
+  OPENDOTA_API_KEY: ${OPENDOTA_API_KEY:-}
+
+  FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -32,7 +60,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    env_file: .env
+    environment: *backend-env
     ports:
       - "8000:8000"
     volumes:
@@ -50,7 +78,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: celery -A app.workers.celery_app worker --loglevel=info -Q ingestion,parsing,analysis --concurrency=4
-    env_file: .env
+    environment: *backend-env
     volumes:
       - ./backend:/app
       - ./parser:/app/parser
@@ -66,7 +94,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: celery -A app.workers.celery_app beat --loglevel=info
-    env_file: .env
+    environment: *backend-env
     volumes:
       - ./backend:/app
     depends_on:
@@ -78,7 +106,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: celery -A app.workers.celery_app flower --port=5555
-    env_file: .env
+    environment: *backend-env
     ports:
       - "5555:5555"
     depends_on:
@@ -89,6 +117,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    environment:
+      VITE_API_PROXY_TARGET: ${VITE_API_PROXY_TARGET:-http://api:8000}
     ports:
       - "3000:3000"
     volumes:

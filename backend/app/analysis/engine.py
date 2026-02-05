@@ -65,9 +65,10 @@ async def analyze_match(
             MatchAnalysis.steam_id == steam_id,
         )
     )
-    if existing.scalar_one_or_none() is not None:
+    existing_analysis = existing.scalar_one_or_none()
+    if existing_analysis is not None:
         logger.info("Analysis already exists for match %s / user %s", match_id, steam_id)
-        return existing.scalar_one_or_none()
+        return existing_analysis
 
     # Load match
     match_result = await session.execute(
