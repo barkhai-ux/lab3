@@ -10,9 +10,9 @@ interface Props {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 70) return 'bg-green-600';
-  if (score >= 40) return 'bg-yellow-600';
-  return 'bg-red-600';
+  if (score >= 70) return 'bg-gradient-to-br from-dota-radiant to-dota-radiant-dark';
+  if (score >= 40) return 'bg-gradient-to-br from-yellow-500 to-yellow-600';
+  return 'bg-gradient-to-br from-dota-dire to-dota-dire-dark';
 }
 
 function scoreGrade(score: number): string {
@@ -24,14 +24,41 @@ function scoreGrade(score: number): string {
   return 'F';
 }
 
-function severityConfig(severity: string | null): { border: string; bg: string; text: string; icon: string } {
+function severityConfig(severity: string | null): { border: string; bg: string; text: string; icon: React.ReactNode } {
   switch (severity) {
     case 'critical':
-      return { border: 'border-red-500', bg: 'bg-red-500/10', text: 'text-red-400', icon: '⚠' };
+      return {
+        border: 'border-dota-dire/50',
+        bg: 'bg-dota-dire/10',
+        text: 'text-dota-dire-light',
+        icon: (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        ),
+      };
     case 'warning':
-      return { border: 'border-yellow-500', bg: 'bg-yellow-500/10', text: 'text-yellow-400', icon: '△' };
+      return {
+        border: 'border-yellow-500/50',
+        bg: 'bg-yellow-500/10',
+        text: 'text-yellow-400',
+        icon: (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        ),
+      };
     default:
-      return { border: 'border-green-500', bg: 'bg-green-500/10', text: 'text-green-400', icon: '✓' };
+      return {
+        border: 'border-dota-radiant/50',
+        bg: 'bg-dota-radiant/10',
+        text: 'text-dota-radiant-light',
+        icon: (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        ),
+      };
   }
 }
 
@@ -46,25 +73,25 @@ function Finding({ finding }: { finding: FindingOut }) {
   const config = severityConfig(finding.severity);
 
   return (
-    <div className={`border-l-4 ${config.border} ${config.bg} rounded-r-lg p-3`}>
+    <div className={`border-l-2 ${config.border} ${config.bg} rounded-r-lg p-4`}>
       <div className="flex items-start gap-3">
-        <span className={`text-lg ${config.text}`}>{config.icon}</span>
-        <div className="flex-1">
+        <span className={`${config.text} flex-shrink-0 mt-0.5`}>{config.icon}</span>
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-sm font-semibold ${config.text}`}>{finding.title}</span>
             {finding.category && (
-              <span className="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-300">
+              <span className="text-xs px-2 py-0.5 rounded bg-dota-surface text-dota-text-muted">
                 {finding.category}
               </span>
             )}
             {finding.game_time_secs !== null && (
-              <span className="text-xs text-gray-500 font-mono">
+              <span className="text-xs text-dota-text-muted font-mono bg-dota-bg-dark/50 px-2 py-0.5 rounded">
                 @ {formatGameTime(finding.game_time_secs)}
               </span>
             )}
           </div>
           {finding.description && (
-            <p className="text-sm text-gray-300 mt-1">{finding.description}</p>
+            <p className="text-sm text-dota-text-secondary mt-1.5">{finding.description}</p>
           )}
         </div>
       </div>
@@ -72,15 +99,17 @@ function Finding({ finding }: { finding: FindingOut }) {
   );
 }
 
-function FindingSection({ title, findings, icon }: { title: string; findings: FindingOut[]; icon: string }) {
+function FindingSection({ title, findings, icon }: { title: string; findings: FindingOut[]; icon: React.ReactNode }) {
   if (findings.length === 0) return null;
 
   return (
-    <div className="space-y-2">
-      <h4 className="text-sm font-medium text-gray-400 flex items-center gap-2">
+    <div className="space-y-3">
+      <h4 className="text-sm font-medium text-dota-text-secondary flex items-center gap-2">
         <span>{icon}</span>
         {title}
-        <span className="text-xs bg-gray-700 px-2 py-0.5 rounded-full">{findings.length}</span>
+        <span className="text-xs bg-dota-surface px-2 py-0.5 rounded-full text-dota-text-muted">
+          {findings.length}
+        </span>
       </h4>
       <div className="space-y-2">
         {findings.map((f, i) => (
@@ -109,20 +138,26 @@ function ComparisonBar({ label, teamValue, enemyValue, format = 'number' }: {
   };
 
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs text-gray-400">
-        <span>{label}</span>
-        <span className="text-gray-500">
-          {formatValue(teamValue)} vs {formatValue(enemyValue)}
-        </span>
+    <div className="space-y-1.5">
+      <div className="flex justify-between text-xs">
+        <span className="text-dota-text-secondary font-medium">{label}</span>
+        <div className="flex items-center gap-2">
+          <span className={isTeamAhead ? 'text-dota-radiant' : 'text-dota-text-muted'}>
+            {formatValue(teamValue)}
+          </span>
+          <span className="text-dota-text-muted">vs</span>
+          <span className={!isTeamAhead ? 'text-dota-dire' : 'text-dota-text-muted'}>
+            {formatValue(enemyValue)}
+          </span>
+        </div>
       </div>
-      <div className="flex h-3 rounded-full overflow-hidden bg-gray-800">
+      <div className="flex h-2.5 rounded-full overflow-hidden bg-dota-bg-dark">
         <div
-          className={`transition-all duration-500 ${isTeamAhead ? 'bg-green-500' : 'bg-green-700'}`}
+          className={`transition-all duration-500 ${isTeamAhead ? 'bg-dota-radiant' : 'bg-dota-radiant/50'}`}
           style={{ width: `${teamPercent}%` }}
         />
         <div
-          className={`transition-all duration-500 ${!isTeamAhead ? 'bg-red-500' : 'bg-red-700'}`}
+          className={`transition-all duration-500 ${!isTeamAhead ? 'bg-dota-dire' : 'bg-dota-dire/50'}`}
           style={{ width: `${100 - teamPercent}%` }}
         />
       </div>
@@ -137,61 +172,69 @@ function PlayerPerformanceCard({ player, isCurrentPlayer }: { player: MatchPlaye
   const heroName = getHeroName(player.hero_id);
 
   return (
-    <div className={`p-4 rounded-xl border ${isCurrentPlayer ? 'border-dota-gold bg-dota-gold/5' : 'border-gray-700 bg-gray-800/30'}`}>
-      <div className="flex items-center gap-3 mb-3">
-        {heroIcon && (
-          <img src={heroIcon} alt={heroName} className="w-12 h-7 object-cover rounded" />
-        )}
-        <div>
-          <div className={`font-semibold ${isCurrentPlayer ? 'text-dota-gold' : 'text-white'}`}>
-            {heroName}
+    <div className={`rounded-xl border overflow-hidden ${isCurrentPlayer ? 'border-dota-gold/50' : 'border-gray-700/50'}`}>
+      {/* Header with gradient */}
+      <div className={`px-4 py-3 ${isCurrentPlayer ? 'bg-gradient-to-r from-dota-gold/20 to-transparent' : 'bg-dota-surface-light/50'}`}>
+        <div className="flex items-center gap-3">
+          {heroIcon && (
+            <div className="hero-portrait w-14 h-8">
+              <img src={heroIcon} alt={heroName} className="w-full h-full object-cover" />
+            </div>
+          )}
+          <div>
+            <div className={`font-semibold ${isCurrentPlayer ? 'text-dota-gold' : 'text-dota-text-primary'}`}>
+              {heroName}
+            </div>
+            <div className="text-xs text-dota-text-muted">
+              {isCurrentPlayer ? 'Your Performance' : 'Teammate'}
+            </div>
           </div>
-          <div className="text-xs text-gray-400">
-            {isCurrentPlayer ? 'Your Performance' : 'Teammate'}
+        </div>
+      </div>
+
+      <div className="p-4 bg-dota-bg-dark/30">
+        {/* KDA Display */}
+        <div className="flex items-center justify-center gap-2 text-3xl font-bold mb-2">
+          <span className="text-dota-radiant">{player.kills ?? 0}</span>
+          <span className="text-dota-text-muted text-xl">/</span>
+          <span className="text-dota-dire">{player.deaths ?? 0}</span>
+          <span className="text-dota-text-muted text-xl">/</span>
+          <span className="text-dota-accent-light">{player.assists ?? 0}</span>
+        </div>
+
+        <div className="text-center text-sm text-dota-text-muted mb-4">
+          KDA Ratio:{' '}
+          <span className={`font-semibold ${kda >= 3 ? 'text-dota-radiant' : kda >= 2 ? 'text-dota-gold' : 'text-dota-dire'}`}>
+            {kda.toFixed(2)}
+          </span>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="stat-box">
+            <div className="text-dota-text-muted uppercase tracking-wider text-[10px]">GPM</div>
+            <div className="text-dota-gold font-semibold text-base">{player.gpm ?? 0}</div>
           </div>
-        </div>
-      </div>
-
-      {/* KDA Display */}
-      <div className="flex items-center justify-center gap-1 text-2xl font-bold mb-3">
-        <span className="text-green-400">{player.kills ?? 0}</span>
-        <span className="text-gray-500">/</span>
-        <span className="text-red-400">{player.deaths ?? 0}</span>
-        <span className="text-gray-500">/</span>
-        <span className="text-blue-400">{player.assists ?? 0}</span>
-      </div>
-
-      <div className="text-center text-sm text-gray-400 mb-4">
-        KDA: <span className={`font-semibold ${kda >= 3 ? 'text-green-400' : kda >= 2 ? 'text-yellow-400' : 'text-red-400'}`}>
-          {kda.toFixed(2)}
-        </span>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-2 text-xs">
-        <div className="bg-gray-800/50 rounded p-2">
-          <div className="text-gray-400">GPM</div>
-          <div className="text-white font-semibold">{player.gpm ?? 0}</div>
-        </div>
-        <div className="bg-gray-800/50 rounded p-2">
-          <div className="text-gray-400">XPM</div>
-          <div className="text-white font-semibold">{player.xpm ?? 0}</div>
-        </div>
-        <div className="bg-gray-800/50 rounded p-2">
-          <div className="text-gray-400">Last Hits</div>
-          <div className="text-white font-semibold">{player.last_hits ?? 0}</div>
-        </div>
-        <div className="bg-gray-800/50 rounded p-2">
-          <div className="text-gray-400">Denies</div>
-          <div className="text-white font-semibold">{player.denies ?? 0}</div>
-        </div>
-        <div className="bg-gray-800/50 rounded p-2">
-          <div className="text-gray-400">Hero DMG</div>
-          <div className="text-white font-semibold">{((player.hero_damage ?? 0) / 1000).toFixed(1)}k</div>
-        </div>
-        <div className="bg-gray-800/50 rounded p-2">
-          <div className="text-gray-400">Tower DMG</div>
-          <div className="text-white font-semibold">{((player.tower_damage ?? 0) / 1000).toFixed(1)}k</div>
+          <div className="stat-box">
+            <div className="text-dota-text-muted uppercase tracking-wider text-[10px]">XPM</div>
+            <div className="text-dota-text-primary font-semibold text-base">{player.xpm ?? 0}</div>
+          </div>
+          <div className="stat-box">
+            <div className="text-dota-text-muted uppercase tracking-wider text-[10px]">Last Hits</div>
+            <div className="text-dota-text-primary font-semibold text-base">{player.last_hits ?? 0}</div>
+          </div>
+          <div className="stat-box">
+            <div className="text-dota-text-muted uppercase tracking-wider text-[10px]">Denies</div>
+            <div className="text-dota-text-primary font-semibold text-base">{player.denies ?? 0}</div>
+          </div>
+          <div className="stat-box">
+            <div className="text-dota-text-muted uppercase tracking-wider text-[10px]">Hero DMG</div>
+            <div className="text-dota-text-primary font-semibold text-base">{((player.hero_damage ?? 0) / 1000).toFixed(1)}k</div>
+          </div>
+          <div className="stat-box">
+            <div className="text-dota-text-muted uppercase tracking-wider text-[10px]">Tower DMG</div>
+            <div className="text-dota-text-primary font-semibold text-base">{((player.tower_damage ?? 0) / 1000).toFixed(1)}k</div>
+          </div>
         </div>
       </div>
     </div>
@@ -251,9 +294,14 @@ function LaneOutcomes({ findings }: { findings: FindingOut[] }) {
   const lanes = ['Safe Lane', 'Mid Lane', 'Off Lane'];
 
   return (
-    <div className="space-y-2">
-      <h4 className="text-sm font-medium text-gray-400">Lane Outcomes</h4>
-      <div className="grid grid-cols-3 gap-2">
+    <div className="space-y-3">
+      <h4 className="text-sm font-medium text-dota-text-secondary flex items-center gap-2">
+        <svg className="w-4 h-4 text-dota-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+        </svg>
+        Lane Outcomes
+      </h4>
+      <div className="grid grid-cols-3 gap-3">
         {lanes.map(lane => {
           const laneFinding = laneFindings.find(f =>
             f.title?.includes(lane) || f.data?.lane_name === lane
@@ -264,16 +312,26 @@ function LaneOutcomes({ findings }: { findings: FindingOut[] }) {
           return (
             <div
               key={lane}
-              className={`p-3 rounded-lg text-center border ${
-                won ? 'bg-green-500/10 border-green-500/50' :
-                lost ? 'bg-red-500/10 border-red-500/50' :
-                'bg-gray-800/30 border-gray-700'
+              className={`p-4 rounded-lg text-center border transition-all ${
+                won ? 'bg-dota-radiant/10 border-dota-radiant/30' :
+                lost ? 'bg-dota-dire/10 border-dota-dire/30' :
+                'bg-dota-bg-dark/50 border-gray-700/30'
               }`}
             >
-              <div className="text-xs text-gray-400 mb-1">{lane}</div>
-              <div className={`text-sm font-semibold ${
-                won ? 'text-green-400' : lost ? 'text-red-400' : 'text-gray-500'
+              <div className="text-xs text-dota-text-muted mb-2 uppercase tracking-wider">{lane}</div>
+              <div className={`text-sm font-semibold flex items-center justify-center gap-1.5 ${
+                won ? 'text-dota-radiant-light' : lost ? 'text-dota-dire-light' : 'text-dota-text-muted'
               }`}>
+                {won && (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+                {lost && (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )}
                 {won ? 'Won' : lost ? 'Lost' : 'Even'}
               </div>
             </div>
@@ -316,15 +374,20 @@ export default function AnalysisDisplay({ analysis, players, currentSteamId, war
     <div className="space-y-6">
       {/* Header with score */}
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-bold">Match Analysis</h3>
+        <div className="flex items-center gap-2">
+          <svg className="w-5 h-5 text-dota-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <h3 className="text-xl font-semibold text-dota-text-primary">Match Analysis</h3>
+        </div>
         {analysis.overall_score !== null && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <div className="text-right">
-              <div className="text-xs text-gray-400 uppercase tracking-wide">Performance</div>
-              <div className="text-sm text-gray-300">{Math.round(analysis.overall_score)}/100</div>
+              <div className="text-xs text-dota-text-muted uppercase tracking-wider">Score</div>
+              <div className="text-sm text-dota-text-secondary font-medium">{Math.round(analysis.overall_score)}/100</div>
             </div>
             <div
-              className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl font-bold text-white ${scoreColor(analysis.overall_score)}`}
+              className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl font-bold text-white shadow-lg ${scoreColor(analysis.overall_score)}`}
             >
               {scoreGrade(analysis.overall_score)}
             </div>
@@ -334,8 +397,8 @@ export default function AnalysisDisplay({ analysis, players, currentSteamId, war
 
       {/* Summary */}
       {analysis.summary && (
-        <div className="bg-gradient-to-r from-dota-surface to-gray-800/50 border border-gray-700 rounded-xl p-4">
-          <p className="text-gray-200">{analysis.summary}</p>
+        <div className="bg-gradient-to-r from-dota-surface to-dota-bg-dark border border-gray-700/50 rounded-xl p-4">
+          <p className="text-dota-text-secondary leading-relaxed">{analysis.summary}</p>
         </div>
       )}
 
@@ -348,13 +411,15 @@ export default function AnalysisDisplay({ analysis, players, currentSteamId, war
 
         {/* Team Comparison */}
         {hasTeamStats && (
-          <div className="p-4 rounded-xl border border-gray-700 bg-gray-800/30">
-            <h4 className="text-sm font-medium text-gray-400 mb-4 flex items-center gap-2">
-              <span className="text-green-400">Your Team</span>
-              <span className="text-gray-500">vs</span>
-              <span className="text-red-400">Enemy Team</span>
-            </h4>
-            <div className="space-y-4">
+          <div className="rounded-xl border border-gray-700/50 overflow-hidden">
+            <div className="px-4 py-3 bg-dota-surface-light/50 border-b border-gray-700/30">
+              <h4 className="text-sm font-medium text-dota-text-secondary flex items-center gap-2">
+                <span className="text-dota-radiant">Your Team</span>
+                <span className="text-dota-text-muted">vs</span>
+                <span className="text-dota-dire">Enemy Team</span>
+              </h4>
+            </div>
+            <div className="p-4 bg-dota-bg-dark/30 space-y-4">
               {teamStats.kills.team + teamStats.kills.enemy > 0 && (
                 <ComparisonBar label="Kills" teamValue={teamStats.kills.team} enemyValue={teamStats.kills.enemy} />
               )}
@@ -377,16 +442,22 @@ export default function AnalysisDisplay({ analysis, players, currentSteamId, war
         <LaneOutcomes findings={analysis.findings} />
 
         {wardPositions && wardPositions.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-gray-400">Vision Control</h4>
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-dota-text-secondary flex items-center gap-2">
+              <svg className="w-4 h-4 text-dota-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Vision Control
+            </h4>
             <MiniWardMap wardPositions={wardPositions} />
-            <div className="flex gap-4 text-xs text-gray-400">
-              <div className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
+            <div className="flex gap-4 text-xs text-dota-text-muted">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
                 Observer
               </div>
-              <div className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
                 Sentry
               </div>
             </div>
@@ -399,23 +470,38 @@ export default function AnalysisDisplay({ analysis, players, currentSteamId, war
         <FindingSection
           title="Critical Issues"
           findings={criticalFindings}
-          icon="🔴"
+          icon={
+            <svg className="w-4 h-4 text-dota-dire" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          }
         />
         <FindingSection
           title="Areas for Improvement"
           findings={warningFindings}
-          icon="🟡"
+          icon={
+            <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
         />
         <FindingSection
           title="Positive Observations"
           findings={infoFindings}
-          icon="🟢"
+          icon={
+            <svg className="w-4 h-4 text-dota-radiant" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
         />
       </div>
 
       {analysis.findings.length === 0 && (
-        <div className="text-center py-8 text-gray-400">
-          No detailed findings available for this match.
+        <div className="text-center py-8">
+          <svg className="w-12 h-12 mx-auto text-dota-text-muted mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-dota-text-muted">No detailed findings available for this match.</p>
         </div>
       )}
     </div>

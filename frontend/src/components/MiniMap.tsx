@@ -50,15 +50,16 @@ function WardMarker({ ward, isSelected, onClick }: WardMarkerProps) {
   const pos = gameToMapCoords(ward.x, ward.y);
 
   // Observer = yellow/gold, Sentry = blue
-  const baseColor = ward.type === 'observer' ? 'bg-yellow-400' : 'bg-blue-400';
-  const borderColor = ward.team === 'radiant' ? 'border-green-400' : 'border-red-400';
+  const baseColor = ward.type === 'observer' ? 'bg-dota-gold' : 'bg-blue-400';
+  const borderColor = ward.team === 'radiant' ? 'border-dota-radiant' : 'border-dota-dire';
+  const glowColor = ward.type === 'observer' ? 'shadow-glow-gold' : 'shadow-blue-400/50';
 
   return (
     <button
       onClick={onClick}
       className={`absolute w-3 h-3 rounded-full ${baseColor} border-2 ${borderColor}
-        hover:scale-150 hover:z-20 transition-transform cursor-pointer
-        ${isSelected ? 'scale-150 z-20 ring-2 ring-white' : 'z-10'}`}
+        hover:scale-150 hover:z-20 transition-all duration-200 cursor-pointer
+        ${isSelected ? `scale-150 z-20 ring-2 ring-white ${glowColor}` : 'z-10'}`}
       style={{
         left: `${pos.left}px`,
         top: `${pos.top}px`,
@@ -76,29 +77,42 @@ interface WardInfoProps {
 
 function WardInfo({ ward, onClose }: WardInfoProps) {
   const wardTypeLabel = ward.type === 'observer' ? 'Observer Ward' : 'Sentry Ward';
-  const wardColor = ward.type === 'observer' ? 'text-yellow-400' : 'text-blue-400';
-  const teamColor = ward.team === 'radiant' ? 'text-green-400' : 'text-red-400';
+  const wardColor = ward.type === 'observer' ? 'text-dota-gold' : 'text-blue-400';
+  const teamColor = ward.team === 'radiant' ? 'text-dota-radiant-light' : 'text-dota-dire-light';
 
   return (
-    <div className="absolute bottom-4 left-4 right-4 bg-dota-bg/95 border border-gray-600 rounded-lg p-3 shadow-lg z-30">
+    <div className="absolute bottom-4 left-4 right-4 bg-dota-surface/95 backdrop-blur-sm border border-gray-700/50 rounded-lg p-4 shadow-xl z-30">
       <div className="flex justify-between items-start">
         <div>
-          <p className={`font-medium ${wardColor}`}>{wardTypeLabel}</p>
-          <p className="text-sm text-gray-300">
-            Placed at <span className="text-white font-mono">{formatGameTime(ward.game_time_secs)}</span>
-          </p>
-          <p className="text-sm">
-            Team: <span className={`font-medium ${teamColor}`}>{ward.team === 'radiant' ? 'Radiant' : 'Dire'}</span>
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Position: ({ward.x.toFixed(0)}, {ward.y.toFixed(0)})
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-3 h-3 rounded-full ${ward.type === 'observer' ? 'bg-dota-gold' : 'bg-blue-400'}`} />
+            <p className={`font-semibold ${wardColor}`}>{wardTypeLabel}</p>
+          </div>
+          <div className="space-y-1 text-sm">
+            <p className="text-dota-text-secondary">
+              Placed at{' '}
+              <span className="text-dota-text-primary font-mono bg-dota-bg-dark/50 px-1.5 py-0.5 rounded">
+                {formatGameTime(ward.game_time_secs)}
+              </span>
+            </p>
+            <p className="text-dota-text-secondary">
+              Team:{' '}
+              <span className={`font-medium ${teamColor}`}>
+                {ward.team === 'radiant' ? 'Radiant' : 'Dire'}
+              </span>
+            </p>
+          </div>
+          <p className="text-xs text-dota-text-muted mt-2 font-mono">
+            ({ward.x.toFixed(0)}, {ward.y.toFixed(0)})
           </p>
         </div>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-white text-xl leading-none"
+          className="text-dota-text-muted hover:text-dota-text-primary transition-colors p-1 rounded hover:bg-dota-surface-light"
         >
-          &times;
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
       </div>
     </div>
@@ -113,20 +127,29 @@ interface TimelineSliderProps {
 
 function TimelineSlider({ duration, value, onChange }: TimelineSliderProps) {
   return (
-    <div className="mt-4 px-2">
+    <div className="mt-4">
+      <div className="flex items-center gap-3 mb-2">
+        <svg className="w-4 h-4 text-dota-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span className="text-sm text-dota-text-secondary">Timeline</span>
+      </div>
       <input
         type="range"
         min={0}
         max={duration}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer
+        className="w-full h-2 bg-dota-bg-dark rounded-lg appearance-none cursor-pointer
           [&::-webkit-slider-thumb]:appearance-none
           [&::-webkit-slider-thumb]:w-4
           [&::-webkit-slider-thumb]:h-4
           [&::-webkit-slider-thumb]:bg-dota-gold
           [&::-webkit-slider-thumb]:rounded-full
           [&::-webkit-slider-thumb]:cursor-pointer
+          [&::-webkit-slider-thumb]:shadow-glow-gold
+          [&::-webkit-slider-thumb]:transition-shadow
+          [&::-webkit-slider-thumb]:hover:shadow-[0_0_15px_rgba(245,166,35,0.5)]
           [&::-moz-range-thumb]:w-4
           [&::-moz-range-thumb]:h-4
           [&::-moz-range-thumb]:bg-dota-gold
@@ -134,10 +157,10 @@ function TimelineSlider({ duration, value, onChange }: TimelineSliderProps) {
           [&::-moz-range-thumb]:border-0
           [&::-moz-range-thumb]:cursor-pointer"
       />
-      <div className="flex justify-between text-xs text-gray-400 mt-1">
-        <span>0:00</span>
-        <span className="text-white font-medium">{formatGameTime(value)}</span>
-        <span>{formatGameTime(duration)}</span>
+      <div className="flex justify-between text-xs mt-2">
+        <span className="text-dota-text-muted">0:00</span>
+        <span className="text-dota-gold font-medium font-mono">{formatGameTime(value)}</span>
+        <span className="text-dota-text-muted">{formatGameTime(duration)}</span>
       </div>
     </div>
   );
@@ -154,22 +177,30 @@ interface LegendProps {
 
 function Legend({ wardCounts }: LegendProps) {
   return (
-    <div className="flex flex-wrap gap-4 text-xs text-gray-300 mt-3">
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 rounded-full bg-yellow-400 border-2 border-green-400 inline-block"></span>
-        <span>Radiant Observer ({wardCounts.radiantObs})</span>
+    <div className="grid grid-cols-2 gap-3 mt-4">
+      <div className="flex items-center gap-2 text-xs">
+        <span className="w-3 h-3 rounded-full bg-dota-gold border-2 border-dota-radiant inline-block"></span>
+        <span className="text-dota-text-secondary">
+          Radiant Obs <span className="text-dota-text-primary font-medium">({wardCounts.radiantObs})</span>
+        </span>
       </div>
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 rounded-full bg-blue-400 border-2 border-green-400 inline-block"></span>
-        <span>Radiant Sentry ({wardCounts.radiantSentry})</span>
+      <div className="flex items-center gap-2 text-xs">
+        <span className="w-3 h-3 rounded-full bg-blue-400 border-2 border-dota-radiant inline-block"></span>
+        <span className="text-dota-text-secondary">
+          Radiant Sentry <span className="text-dota-text-primary font-medium">({wardCounts.radiantSentry})</span>
+        </span>
       </div>
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 rounded-full bg-yellow-400 border-2 border-red-400 inline-block"></span>
-        <span>Dire Observer ({wardCounts.direObs})</span>
+      <div className="flex items-center gap-2 text-xs">
+        <span className="w-3 h-3 rounded-full bg-dota-gold border-2 border-dota-dire inline-block"></span>
+        <span className="text-dota-text-secondary">
+          Dire Obs <span className="text-dota-text-primary font-medium">({wardCounts.direObs})</span>
+        </span>
       </div>
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 rounded-full bg-blue-400 border-2 border-red-400 inline-block"></span>
-        <span>Dire Sentry ({wardCounts.direSentry})</span>
+      <div className="flex items-center gap-2 text-xs">
+        <span className="w-3 h-3 rounded-full bg-blue-400 border-2 border-dota-dire inline-block"></span>
+        <span className="text-dota-text-secondary">
+          Dire Sentry <span className="text-dota-text-primary font-medium">({wardCounts.direSentry})</span>
+        </span>
       </div>
     </div>
   );
@@ -195,12 +226,12 @@ export default function MiniMap({ wardPositions, matchDuration }: Props) {
   }, [visibleWards]);
 
   return (
-    <div className="space-y-2">
+    <div>
       {/* Map container */}
       <div className="relative inline-block">
         {/* Minimap background */}
         <div
-          className="relative bg-cover bg-center rounded-lg overflow-hidden border border-gray-700"
+          className="relative bg-cover bg-center rounded-lg overflow-hidden border border-gray-700/50 shadow-lg"
           style={{
             width: `${MAP_SIZE}px`,
             height: `${MAP_SIZE}px`,
@@ -238,10 +269,20 @@ export default function MiniMap({ wardPositions, matchDuration }: Props) {
       <Legend wardCounts={wardCounts} />
 
       {/* Ward count summary */}
-      <p className="text-sm text-gray-400">
-        Showing {visibleWards.length} of {wardPositions.length} wards
-        {timeFilter < matchDuration && ` (up to ${formatGameTime(timeFilter)})`}
-      </p>
+      <div className="mt-4 flex items-center justify-between text-sm">
+        <span className="text-dota-text-muted">
+          Showing <span className="text-dota-text-primary font-medium">{visibleWards.length}</span> of{' '}
+          <span className="text-dota-text-secondary">{wardPositions.length}</span> wards
+        </span>
+        {timeFilter < matchDuration && (
+          <button
+            onClick={() => setTimeFilter(matchDuration)}
+            className="text-dota-gold hover:text-dota-gold-light text-xs transition-colors"
+          >
+            Show all
+          </button>
+        )}
+      </div>
     </div>
   );
 }

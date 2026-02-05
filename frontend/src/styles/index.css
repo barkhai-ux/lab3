@@ -1,9 +1,178 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    @apply bg-dota-bg text-gray-100 antialiased;
+    @apply bg-dota-bg text-dota-text-primary antialiased;
+    background-image:
+      radial-gradient(ellipse at top, rgba(26, 58, 92, 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(13, 13, 21, 1) 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  /* Custom scrollbar for Dota 2 theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-dota-bg-dark;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-dota-surface-light rounded;
+    border: 2px solid transparent;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-dota-accent;
+  }
+}
+
+@layer components {
+  /* Dota 2 styled card */
+  .dota-card {
+    @apply bg-dota-surface rounded-lg border border-gray-700/50 relative overflow-hidden;
+    background: linear-gradient(180deg, rgba(31, 31, 46, 0.8) 0%, rgba(23, 23, 35, 0.95) 100%);
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.3),
+      0 2px 4px -1px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .dota-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(245, 166, 35, 0.3), transparent);
+  }
+
+  /* Primary button style */
+  .dota-btn {
+    @apply px-4 py-2 font-medium rounded transition-all duration-200;
+    @apply bg-gradient-to-b from-dota-accent to-dota-accent/80;
+    @apply border border-dota-accent-light/30;
+    @apply hover:from-dota-accent-light hover:to-dota-accent;
+    @apply hover:border-dota-accent-light/50;
+    @apply active:scale-95;
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .dota-btn:disabled {
+    @apply opacity-50 cursor-not-allowed;
+    @apply hover:from-dota-accent hover:to-dota-accent/80;
+  }
+
+  /* Gold accent button */
+  .dota-btn-gold {
+    @apply px-4 py-2 font-medium rounded transition-all duration-200;
+    @apply bg-gradient-to-b from-dota-gold to-dota-gold-dark;
+    @apply text-dota-bg-dark;
+    @apply border border-dota-gold-light/50;
+    @apply hover:from-dota-gold-light hover:to-dota-gold;
+    @apply hover:shadow-glow-gold;
+    @apply active:scale-95;
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  /* Win/Loss badges */
+  .badge-win {
+    @apply px-3 py-1 rounded font-semibold text-sm;
+    @apply bg-dota-radiant/20 text-dota-radiant-light border border-dota-radiant/30;
+  }
+
+  .badge-loss {
+    @apply px-3 py-1 rounded font-semibold text-sm;
+    @apply bg-dota-dire/20 text-dota-dire-light border border-dota-dire/30;
+  }
+
+  /* Glowing border effect */
+  .glow-border-gold {
+    position: relative;
+  }
+
+  .glow-border-gold::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(245, 166, 35, 0.5), transparent 50%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Stat display */
+  .stat-box {
+    @apply bg-dota-bg-dark/50 rounded px-3 py-2 border border-gray-700/30;
+  }
+
+  /* Navigation link */
+  .nav-link {
+    @apply px-4 py-2 rounded-md text-sm font-medium transition-all duration-200;
+    @apply text-dota-text-secondary hover:text-dota-text-primary;
+    @apply hover:bg-dota-surface-light;
+    @apply relative;
+  }
+
+  .nav-link.active {
+    @apply text-dota-gold bg-dota-surface;
+  }
+
+  .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, theme('colors.dota.gold'), transparent);
+  }
+
+  /* MMR badge */
+  .mmr-badge {
+    @apply text-xs font-medium px-2 py-0.5 rounded;
+    @apply bg-dota-immortal/20 text-dota-immortal border border-dota-immortal/30;
+  }
+
+  /* Hero portrait frame */
+  .hero-portrait {
+    @apply relative overflow-hidden rounded;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.1),
+      0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .hero-portrait img {
+    @apply w-full h-full object-cover;
+  }
+}
+
+@layer utilities {
+  .text-shadow-sm {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  .text-glow-gold {
+    text-shadow: 0 0 10px rgba(245, 166, 35, 0.5);
   }
 }
