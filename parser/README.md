@@ -1,17 +1,22 @@
 # Dota 2 Replay Parser
 
-This directory holds the clarity JAR used for parsing Dota 2 replay files.
+This directory holds (optional) replay parsing tooling.
 
-## Setup
+## Current Behavior (Recommended)
+If `parser/clarity.jar` is **not** present, the backend will fall back to using
+OpenDota’s parsed match endpoint to generate timeline events (item purchases,
+ward placements, etc). This is the easiest way to get replay-ish data working
+without installing Java locally.
 
-Run the download script:
+## Local Parsing (Advanced)
+Local replay parsing requires a **runnable** `clarity.jar` that accepts a `.dem`
+path and prints JSON events to stdout.
 
-```bash
-bash scripts/download_clarity.sh
-```
+Upstream `skadistats/clarity` is primarily a library and does not provide a
+drop‑in “fat JAR” CLI that matches this project’s expected JSON format.
 
-This downloads the clarity fat JAR from
-[skadistats/clarity](https://github.com/skadistats/clarity) and places it
+If you still want local parsing, you’ll need to build a custom CLI JAR (for
+example using `skadistats/clarity-examples` as a starting point) and place it
 here as `clarity.jar`.
 
 ## Usage

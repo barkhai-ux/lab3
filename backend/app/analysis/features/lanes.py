@@ -71,6 +71,14 @@ def infer_lanes(
     Returns:
         Dict mapping player_slot → lane code (1=safe, 2=mid, 3=off, 4=jungle).
     """
+    # If lane hints are already present in DB (e.g. from OpenDota), use them as a fallback.
+    lane_hints: dict[int, int] = {}
+    for p in match_players:
+        slot = p.get("player_slot")
+        lane = p.get("lane")
+        if isinstance(slot, int) and isinstance(lane, int) and lane in (1, 2, 3, 4):
+            lane_hints[slot] = lane
+
     # Collect laning-phase positions per player
     player_positions: dict[int, list[tuple[float, float]]] = {}
     for snap in snapshots:
@@ -86,7 +94,7 @@ def infer_lanes(
 
     for slot, positions in player_positions.items():
         if not positions:
-            lane_assignments[slot] = 4  # Default to jungle
+            lane_assignments[slot] = lane_hints.get(slot, 4)
             continue
 
         region_counts = Counter()
@@ -114,7 +122,7 @@ def infer_lanes(
     # Fill in any missing slots
     for slot in [0, 1, 2, 3, 4, 128, 129, 130, 131, 132]:
         if slot not in lane_assignments:
-            lane_assignments[slot] = 4
+            lane_assignments[slot] = lane_hints.get(slot, 4)
 
     logger.info("Lane assignments: %s", lane_assignments)
     return lane_assignments

@@ -37,16 +37,7 @@ export async function getTimeline(
 export async function getAnalysis(
   matchId: number,
 ): Promise<MatchAnalysisOut | null> {
-  try {
-    return await request<MatchAnalysisOut>(
-      `/api/matches/${matchId}/analysis`,
-    );
-  } catch (err) {
-    if (err instanceof Error && 'status' in err && (err as { status: number }).status === 404) {
-      return null;
-    }
-    throw err;
-  }
+  return request<MatchAnalysisOut | null>(`/api/matches/${matchId}/analysis`);
 }
 
 export async function triggerAnalysis(

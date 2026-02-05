@@ -209,11 +209,10 @@ async def get_analysis(
     )
     analysis = result.scalar_one_or_none()
 
+    # Returning `null` avoids noisy 404s in the frontend while still allowing it
+    # to distinguish "not analyzed yet" vs "analysis present".
     if analysis is None:
-        raise HTTPException(
-            status_code=404,
-            detail="No analysis found. Trigger analysis with POST /api/matches/{id}/analyze",
-        )
+        return None
 
     return MatchAnalysisOut.model_validate(analysis)
 
@@ -252,15 +251,26 @@ async def trigger_analysis(
         # Celery/Redis unavailable — run analysis inline
         logger.warning("Celery unavailable, running analysis inline")
         from app.analysis.engine import analyze_match
-        from app.workers.replay import download_replay, parse_and_store_events
+        from pathlib import Path
+
+        from app.workers.replay import (
+            download_replay,
+            parse_and_store_events,
+            parse_and_store_events_via_opendota,
+        )
+        from app.config import settings
 
         try:
             # Try to download and parse replay inline
             try:
-                replay_path = await download_replay(match_id, db)
-                if replay_path:
-                    await parse_and_store_events(match_id, replay_path, db)
-                    await db.commit()
+                if not Path(settings.clarity_jar_path).exists():
+                    await parse_and_store_events_via_opendota(match_id, db)
+                else:
+                    replay_path = await download_replay(match_id, db)
+                    if replay_path:
+                        await parse_and_store_events(match_id, replay_path, db)
+
+                await db.commit()
             except Exception as replay_err:
                 logger.warning("Inline replay processing failed: %s", replay_err)
                 # Continue with analysis even if replay fails

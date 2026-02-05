@@ -9,17 +9,12 @@ Full‑stack app that ingests your recent Dota 2 matches (Steam/OpenDota), optio
 - Frontend: React (Vite) + Tailwind
 
 ## Quickstart (Docker)
-1. Download the replay parser JAR (optional but required for replay timelines/analysis):
-```bash
-bash scripts/download_clarity.sh
-```
-
-2. Start everything:
+1. Start everything:
 ```bash
 docker compose up --build
 ```
 
-3. Open:
+2. Open:
 - Frontend: `http://localhost:3000`
 - API: `http://localhost:8000`
 - Celery Flower: `http://localhost:5555`
@@ -43,5 +38,7 @@ python scripts/seed_baselines.py
 ```
 
 ## Notes
-- Replay parsing depends on `parser/clarity.jar`. If it’s missing, match ingestion still works, but replay event timelines and some detectors won’t have data.
+- Replay timelines/extra event data:
+  - If `parser/clarity.jar` is missing, the backend falls back to OpenDota’s parsed match endpoint (no local Java needed).
+  - If OpenDota hasn’t parsed a match yet, the backend will request a parse and the match may show `replay_state: parsing` until data becomes available.
 - Replay downloads are cached in the `replay_data` volume and cleaned up by retention settings.

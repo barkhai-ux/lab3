@@ -134,6 +134,21 @@ export default function MatchDetailPage() {
   if (!match) return <ErrorMessage message="Match not found" />;
 
   const isRadiantWin = match.radiant_win;
+  const replayMeta = (() => {
+    switch (match.replay_state) {
+      case 'parsed':
+        return { label: 'Parsed', color: 'text-dota-radiant' };
+      case 'parsing':
+        return { label: 'Parsing', color: 'text-dota-gold' };
+      case 'downloaded':
+        return { label: 'Downloaded', color: 'text-dota-gold' };
+      case 'failed':
+        return { label: 'Failed', color: 'text-dota-dire' };
+      case 'pending':
+      default:
+        return { label: 'Pending', color: 'text-dota-text-muted' };
+    }
+  })();
 
   return (
     <div className="space-y-6">
@@ -204,17 +219,22 @@ export default function MatchDetailPage() {
             )}
             <div className="stat-box">
               <p className="text-xs text-dota-text-muted uppercase tracking-wider mb-1">Replay</p>
-              <p className={`text-lg font-semibold flex items-center gap-2 ${
-                match.replay_state === 'parsed' ? 'text-dota-radiant' : 'text-dota-text-muted'
-              }`}>
+              <p
+                className={`text-lg font-semibold flex items-center gap-2 ${replayMeta.color}`}
+                title={`replay_state: ${match.replay_state}`}
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   {match.replay_state === 'parsed' ? (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  ) : match.replay_state === 'failed' ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  ) : match.replay_state === 'downloaded' ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
                   ) : (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   )}
                 </svg>
-                {match.replay_state === 'parsed' ? 'Parsed' : 'Pending'}
+                {replayMeta.label}
               </p>
             </div>
             <div className="stat-box">
