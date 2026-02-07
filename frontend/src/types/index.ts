@@ -74,6 +74,22 @@ export interface TimelineOut {
   total_events: number;
 }
 
+// ── Item Timing ───────────────────────────────────────
+
+export interface ItemPurchase {
+  item: string;
+  game_time_secs: number;
+  player_slot: number;
+  hero: string;
+}
+
+export interface PlayerItemTimeline {
+  player_slot: number;
+  hero_id: number;
+  steam_id: number | null;
+  purchases: ItemPurchase[];
+}
+
 // ── Vision / Ward Data ───────────────────────────────
 
 export interface WardPosition {

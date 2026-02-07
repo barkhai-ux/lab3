@@ -45,6 +45,29 @@ EVENT_TYPE_MAP = {
 # Hero name prefix to strip
 HERO_PREFIX = "npc_dota_hero_"
 
+def normalize_player_slot(slot: int | str | None) -> int | None:
+    """
+    Normalize player slots across different sources.
+
+    We store slots using Valve/Dota API indexing:
+      - Radiant: 0-4
+      - Dire:    128-132 (0x80 bit set)
+
+    Some replay parsers emit 0-9 indexing (0-4 Radiant, 5-9 Dire).
+    If we detect 0-9, we convert Dire slots to 128-132 so they match DB rows.
+    """
+    if slot is None:
+        return None
+    try:
+        s = int(slot)
+    except (TypeError, ValueError):
+        return None
+
+    if 0 <= s <= 9:
+        return s if s < 5 else 128 + (s - 5)
+
+    return s
+
 
 def normalize_hero_name(name: str | None) -> str | None:
     """Strip the npc_dota_hero_ prefix from entity names."""
@@ -57,11 +80,11 @@ def extract_player_slot_from_event(event: dict) -> int | None:
     """Try to extract a player slot (0-9) from a clarity event."""
     # clarity may provide player slot directly
     if "playerSlot" in event:
-        return event["playerSlot"]
+        return normalize_player_slot(event["playerSlot"])
     if "player_slot" in event:
-        return event["player_slot"]
+        return normalize_player_slot(event["player_slot"])
     if "slot" in event:
-        return event["slot"]
+        return normalize_player_slot(event["slot"])
     return None
 
 

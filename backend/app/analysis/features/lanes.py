@@ -43,12 +43,13 @@ def classify_position(x: float, y: float) -> str:
         if abs(x - y) < 50:
             return "mid"
 
-    # Bot lane
-    if y < BOT_Y_THRESHOLD and x > LEFT_X_THRESHOLD:
+    # Bot lane: keep this fairly "tight" to avoid labeling jungle positions as lane.
+    # (e.g. (130, 50) should be jungle, while (200, 30) is clearly bot lane.)
+    if y < BOT_Y_THRESHOLD and x > RIGHT_X_THRESHOLD:
         return "bot"
 
     # Top lane
-    if y > TOP_Y_THRESHOLD and x < RIGHT_X_THRESHOLD:
+    if y > TOP_Y_THRESHOLD and x < LEFT_X_THRESHOLD:
         return "top"
 
     # If not clearly in any lane, it's jungle/roaming
@@ -70,6 +71,14 @@ def infer_lanes(
     Returns:
         Dict mapping player_slot → lane code (1=safe, 2=mid, 3=off, 4=jungle).
     """
+    # If lane hints are already present in DB (e.g. from OpenDota), use them as a fallback.
+    lane_hints: dict[int, int] = {}
+    for p in match_players:
+        slot = p.get("player_slot")
+        lane = p.get("lane")
+        if isinstance(slot, int) and isinstance(lane, int) and lane in (1, 2, 3, 4):
+            lane_hints[slot] = lane
+
     # Collect laning-phase positions per player
     player_positions: dict[int, list[tuple[float, float]]] = {}
     for snap in snapshots:
@@ -85,7 +94,7 @@ def infer_lanes(
 
     for slot, positions in player_positions.items():
         if not positions:
-            lane_assignments[slot] = 4  # Default to jungle
+            lane_assignments[slot] = lane_hints.get(slot, 4)
             continue
 
         region_counts = Counter()
@@ -96,7 +105,10 @@ def infer_lanes(
         most_common_region = region_counts.most_common(1)[0][0]
 
         # Convert region name to lane code based on team
-        is_radiant = slot < 5  # Slots 0-4 are Radiant, 5-9 are Dire
+        # Works with both common slot schemes:
+        # - 0-9 indexing (0-4 Radiant, 5-9 Dire)
+        # - Valve/Dota API indexing (0-4 Radiant, 128-132 Dire)
+        is_radiant = slot < 5
 
         if most_common_region == "mid":
             lane_assignments[slot] = 2
@@ -108,9 +120,9 @@ def infer_lanes(
             lane_assignments[slot] = 4  # jungle
 
     # Fill in any missing slots
-    for slot in range(10):
+    for slot in [0, 1, 2, 3, 4, 128, 129, 130, 131, 132]:
         if slot not in lane_assignments:
-            lane_assignments[slot] = 4
+            lane_assignments[slot] = lane_hints.get(slot, 4)
 
     logger.info("Lane assignments: %s", lane_assignments)
     return lane_assignments

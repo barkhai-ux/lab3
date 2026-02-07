@@ -1,149 +1,169 @@
-import { useState, useEffect } from 'react';
-import type { MatchListOut, AggregateInsights, HeroPerformance } from '../types';
-import { listMatches } from '../api/matches';
-import { getInsights, getHeroPerformance } from '../api/insights';
-import MatchInputPanel from '../components/dashboard/MatchInputPanel';
-import QuickInsightsPanel from '../components/dashboard/QuickInsightsPanel';
-import RecentMatchesPanel from '../components/dashboard/RecentMatchesPanel';
-import DataTable, { Column } from '../components/common/DataTable';
-import { getHeroName, getHeroIcon } from '../data/heroes';
+import { useState, useEffect, useCallback } from 'react';
+import type { MatchListOut } from '../types';
+import { listMatches, refreshMatches } from '../api/matches';
+import MatchCard from '../components/MatchCard';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
 
 export default function DashboardPage() {
-  const [matches, setMatches] = useState<MatchListOut | null>(null);
-  const [insights, setInsights] = useState<AggregateInsights | null>(null);
-  const [heroes, setHeroes] = useState<HeroPerformance[]>([]);
+  const [data, setData] = useState<MatchListOut | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [refreshing, setRefreshing] = useState(false);
+  const perPage = 20;
 
-  useEffect(() => {
+  const fetchPage = useCallback(async (p: number) => {
     setLoading(true);
-    Promise.all([
-      listMatches(1, 10),
-      getInsights(),
-      getHeroPerformance(),
-    ])
-      .then(([matchData, insightsData, heroData]) => {
-        setMatches(matchData);
-        setInsights(insightsData);
-        setHeroes(heroData);
-      })
-      .catch((err) => {
-        console.error('Failed to load dashboard data:', err);
-      })
-      .finally(() => setLoading(false));
+    setError(null);
+    try {
+      const result = await listMatches(p, perPage);
+      setData(result);
+      setPage(p);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load matches');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const heroColumns: Column<HeroPerformance>[] = [
-    {
-      key: 'hero',
-      header: 'Hero',
-      sortKey: (row) => getHeroName(row.hero_id),
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          {getHeroIcon(row.hero_id) && (
-            <img
-              src={getHeroIcon(row.hero_id)}
-              alt={getHeroName(row.hero_id)}
-              className="w-8 h-[22px] object-cover rounded-sm"
-            />
-          )}
-          <span className="text-dota-text-primary">{getHeroName(row.hero_id)}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'matches',
-      header: 'Matches',
-      align: 'center',
-      sortKey: 'matches_played',
-      render: (row) => row.matches_played,
-    },
-    {
-      key: 'winrate',
-      header: 'Win%',
-      align: 'center',
-      sortKey: (row) => row.matches_played > 0 ? row.wins / row.matches_played : 0,
-      render: (row) => {
-        const wr = row.matches_played > 0 ? (row.wins / row.matches_played) * 100 : 0;
-        return (
-          <span className={wr >= 50 ? 'text-dota-radiant' : 'text-dota-dire'}>
-            {wr.toFixed(1)}%
-          </span>
-        );
-      },
-    },
-    {
-      key: 'kda',
-      header: 'KDA',
-      align: 'center',
-      sortKey: (row) => (row.avg_kills + row.avg_assists) / Math.max(row.avg_deaths, 1),
-      render: (row) => (
-        <span className="font-mono text-stat">
-          <span className="text-dota-radiant">{row.avg_kills.toFixed(1)}</span>
-          <span className="text-dota-text-muted">/</span>
-          <span className="text-dota-dire">{row.avg_deaths.toFixed(1)}</span>
-          <span className="text-dota-text-muted">/</span>
-          <span className="text-blue-400">{row.avg_assists.toFixed(1)}</span>
-        </span>
-      ),
-    },
-    {
-      key: 'gpm',
-      header: 'GPM',
-      align: 'center',
-      sortKey: 'avg_gpm',
-      render: (row) => <span className="text-dota-gold font-mono">{Math.round(row.avg_gpm)}</span>,
-    },
-    {
-      key: 'xpm',
-      header: 'XPM',
-      align: 'center',
-      sortKey: 'avg_xpm',
-      render: (row) => <span className="font-mono">{Math.round(row.avg_xpm)}</span>,
-    },
-    {
-      key: 'score',
-      header: 'Score',
-      align: 'center',
-      sortKey: 'avg_score',
-      render: (row) => (
-        <span className={`font-mono ${row.avg_score !== null && row.avg_score >= 70 ? 'text-dota-radiant' : ''}`}>
-          {row.avg_score !== null ? Math.round(row.avg_score) : '-'}
-        </span>
-      ),
-    },
-  ];
+  useEffect(() => {
+    fetchPage(1);
+  }, [fetchPage]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setError(null);
+    try {
+      await refreshMatches();
+      await fetchPage(1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh matches');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const totalPages = data ? Math.ceil(data.total / perPage) : 0;
 
   return (
-    <div className="space-y-6">
-      {/* Match Input */}
-      <MatchInputPanel />
-
-      {/* Quick Insights + Recent Matches */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <QuickInsightsPanel
-          insights={insights}
-          heroes={heroes}
-          loading={loading}
-        />
-        <RecentMatchesPanel
-          matches={matches?.matches ?? []}
-          loading={loading}
-        />
-      </div>
-
-      {/* Hero Performance Table */}
-      <div className="panel">
-        <div className="panel-header">Hero Performance</div>
-        <div className="p-4">
-          <DataTable
-            data={heroes}
-            columns={heroColumns}
-            keyExtractor={(row) => row.hero_id}
-            initialSortKey="matches"
-            initialSortOrder="desc"
-          />
+    <div>
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-display font-bold text-dota-text-primary mb-1">
+            My Matches
+          </h1>
+          {data && (
+            <p className="text-sm text-dota-text-muted">
+              {data.total} matches found
+            </p>
+          )}
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="dota-btn flex items-center gap-2"
+        >
+          <svg
+            className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+          <span className="hidden sm:inline">{refreshing ? 'Fetching...' : 'Refresh'}</span>
+        </button>
       </div>
+
+      {loading && <LoadingSpinner />}
+      {error && <ErrorMessage message={error} onRetry={() => fetchPage(page)} />}
+
+      {!loading && data && (
+        <>
+          {data.matches.length === 0 ? (
+            <div className="dota-card p-12 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-dota-bg-dark mb-4">
+                <svg className="w-8 h-8 text-dota-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-dota-text-primary mb-2">No matches found</h3>
+              <p className="text-dota-text-muted mb-6">
+                Click "Refresh" to fetch your recent games from the Dota 2 API.
+              </p>
+              <button onClick={handleRefresh} disabled={refreshing} className="dota-btn-gold">
+                Fetch Matches
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {data.matches.map((m) => (
+                <MatchCard key={m.match_id} match={m} />
+              ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-8">
+              <button
+                onClick={() => fetchPage(page - 1)}
+                disabled={page <= 1}
+                className="p-2 rounded-lg bg-dota-surface border border-gray-700/50 text-dota-text-secondary hover:text-dota-text-primary hover:border-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+
+              <div className="flex items-center gap-1 px-2">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => fetchPage(pageNum)}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                        page === pageNum
+                          ? 'bg-dota-gold text-dota-bg-dark'
+                          : 'bg-dota-surface border border-gray-700/50 text-dota-text-secondary hover:text-dota-text-primary hover:border-gray-600'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => fetchPage(page + 1)}
+                disabled={page >= totalPages}
+                className="p-2 rounded-lg bg-dota-surface border border-gray-700/50 text-dota-text-secondary hover:text-dota-text-primary hover:border-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
