@@ -241,48 +241,6 @@ function PlayerPerformanceCard({ player, isCurrentPlayer }: { player: MatchPlaye
   );
 }
 
-// Mini ward map component
-const MINIMAP_URL = 'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/minimap/minimap.png';
-const GAME_COORD_MIN = -8288;
-const GAME_COORD_MAX = 8288;
-const GAME_COORD_RANGE = GAME_COORD_MAX - GAME_COORD_MIN;
-
-function MiniWardMap({ wardPositions }: { wardPositions: WardPosition[] }) {
-  const gameToMapCoords = (x: number, y: number) => {
-    const normalizedX = (x - GAME_COORD_MIN) / GAME_COORD_RANGE;
-    const normalizedY = (y - GAME_COORD_MIN) / GAME_COORD_RANGE;
-    return {
-      left: `${normalizedX * 100}%`,
-      top: `${(1 - normalizedY) * 100}%`,
-    };
-  };
-
-  return (
-    <div
-      className="relative w-full aspect-square rounded-lg overflow-hidden border border-gray-700"
-      style={{ backgroundImage: `url('${MINIMAP_URL}')`, backgroundSize: 'cover' }}
-    >
-      {wardPositions.map((ward, i) => {
-        const pos = gameToMapCoords(ward.x, ward.y);
-        const baseColor = ward.type === 'observer' ? 'bg-yellow-400' : 'bg-blue-400';
-        const borderColor = ward.team === 'radiant' ? 'border-green-400' : 'border-red-400';
-
-        return (
-          <div
-            key={i}
-            className={`absolute w-2 h-2 rounded-full ${baseColor} border ${borderColor}`}
-            style={{
-              left: pos.left,
-              top: pos.top,
-              transform: 'translate(-50%, -50%)',
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
 // Lane outcome visualization
 function LaneOutcomes({ findings }: { findings: FindingOut[] }) {
   const laneFindings = findings.filter(f =>
@@ -342,7 +300,7 @@ function LaneOutcomes({ findings }: { findings: FindingOut[] }) {
   );
 }
 
-export default function AnalysisDisplay({ analysis, players, currentSteamId, wardPositions }: Props) {
+export default function AnalysisDisplay({ analysis, players, currentSteamId, wardPositions: _wardPositions }: Props) {
   const criticalFindings = analysis.findings.filter(f => f.severity === 'critical');
   const warningFindings = analysis.findings.filter(f => f.severity === 'warning');
   const infoFindings = analysis.findings.filter(f => f.severity === 'info');
